@@ -5,33 +5,22 @@
   <title>Kuriverse</title>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
   <style>
-    body { margin: 0;
-    background: #000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden; }
-    canvas {
-    display: block;
-    border: 2px solid #333;
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
     }
-    #chat-input {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 300px;
-      height: 30px;
-      font-size: 18px;
-      display: none;
+    canvas {
+      display: block;
     }
   </style>
 </head>
 <body>
-  <input id="chat-input" type="text" placeholder="채팅 입력..." />
-  <script src="loginScene.js"></script>
-  <script src="mainScene.js"></script>
-  <script src="game.js"></script>
+  <div id="game-container"></div> <!-- DOM 요소가 렌더링될 영역 -->
+  <script type="module" src="game.js"></script>
 </body>
 </html>

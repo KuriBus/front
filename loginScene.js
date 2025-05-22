@@ -62,3 +62,5 @@ class LoginScene extends Phaser.Scene {
     }
   }
 }
+
+export default LoginScene;
