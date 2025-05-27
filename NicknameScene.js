@@ -6,7 +6,6 @@ class NicknameScene extends Phaser.Scene {
   preload() {
     this.load.image('nickname_bg', 'assets/nicknamebg.png');
 
-    // Pretendard 웹폰트 로드 (CSS 링크로 삽입)
     const fontLink = document.createElement('link');
     fontLink.rel = 'stylesheet';
     fontLink.href = 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css';
@@ -68,11 +67,12 @@ class NicknameScene extends Phaser.Scene {
         window.userInfo = {
           nickname,
           userId: crypto.randomUUID(),
-          roomId: null
+          roomId: null,
+          character: null 
         };
 
         input.remove();
-        this.scene.start('WorldMapScene');
+        this.scene.start('CharacterSelectScene');
       }
     });
   }

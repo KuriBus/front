@@ -4,10 +4,11 @@ class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    const { roomId } = window.userInfo || { roomId: 1 };
-    this.load.image('boy1', 'assets/boy1.png');
+    const { roomId, character } = window.userInfo || { roomId: 1, character: 'boy1' };
 
-    // roomId에 따라 배경 다르게 불러오기
+    this.load.image('boy1', 'assets/boy1.png');
+    this.load.image('girl1', 'assets/girl1.png');
+
     if (roomId === 1) {
       this.load.image('bg', 'assets/classroom.png');
     } else if (roomId === 2) {
@@ -16,16 +17,14 @@ class MainScene extends Phaser.Scene {
   }
 
   create() {
-    const { roomId, nickname, userId } = window.userInfo || {
+    const { roomId, nickname, character } = window.userInfo || {
       roomId: 1,
       nickname: '사용자',
-      userId: 0
+      character: 'boy1'
     };
 
-    // 배경
     this.add.image(800, 450, 'bg').setDisplaySize(1600, 900).setDepth(0);
 
-    // 타이틀
     const titleText = roomId === 1 ? '교실 1' : '문화공간';
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
     this.add.text(800, 50, titleText, {
@@ -34,10 +33,8 @@ class MainScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5).setDepth(6);
 
-    // 채팅 박스
     this.add.rectangle(300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
 
-    // 채팅 입력창 DOM
     this.chatInput = this.add.dom(300, 850).createFromHTML(`
       <div style="width: 534px; height: 58px; background: #fff; border: 3px solid #B593CC; border-radius: 12px; display: flex; align-items: center; padding: 0 25px; gap: 13px;">
         <input id="chat-message" type="text" placeholder="메시지를 입력하세요" style="flex: 1; border: none; outline: none; font-size: 16px;" />
@@ -54,7 +51,6 @@ class MainScene extends Phaser.Scene {
           this.addChatLog(`${nickname}: ${message}`);
           inputEl.value = '';
 
-          // 말풍선 생성
           const bubbleWidth = 220;
           const bubbleHeight = 90;
           const tailSize = 12;
@@ -84,7 +80,6 @@ class MainScene extends Phaser.Scene {
           ]);
           bubble.setDepth(6);
           this.time.delayedCall(3000, () => bubble.destroy());
-
           this.activeBubble = bubble;
         }
       }
@@ -126,13 +121,13 @@ class MainScene extends Phaser.Scene {
       }
     };
 
-    // 플레이어
-    this.player = this.physics.add.sprite(800, 450, 'boy1');
+    // 선택된 캐릭터로 플레이어 생성
+    const spriteKey = character || 'boy1';
+    this.player = this.physics.add.sprite(800, 450, spriteKey);
     this.player.setDisplaySize(100, 120);
     this.player.setCollideWorldBounds(true);
     this.player.setOrigin(0.5);
 
-    // 닉네임
     this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4)
       .setOrigin(0.5).setDepth(5);
     this.nicknameText = this.add.text(this.player.x, this.player.y + 78, nickname, {
@@ -161,12 +156,12 @@ class MainScene extends Phaser.Scene {
       this.player.setVelocityY(speed);
     }
 
-    // 말풍선 위치
+    // 말풍선
     if (this.activeBubble) {
       this.activeBubble.setPosition(this.player.x - 110, this.player.y - 150);
     }
 
-    // 닉네임 위치
+    // 닉네임
     if (this.nicknameText && this.nicknameBg) {
       const y = this.player.y + 78;
       this.nicknameText.setPosition(this.player.x, y);
