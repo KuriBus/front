@@ -19,10 +19,10 @@ class StartScene extends Phaser.Scene {
     this.add.image(960, 200, 'logo').setOrigin(0.5).setScale(0.4);
 
     // 캐릭터 그림자
-    this.add.rectangle(352, 840, 246, 49, 0x878787, 0.5)
-      .setScale(1, -1).setAlpha(0.5).setDepth(1).setBlur?.(35);
-    this.add.rectangle(634, 843, 246, 49, 0x878787, 0.5)
-      .setScale(1, -1).setAlpha(0.5).setDepth(1).setBlur?.(35);
+    // this.add.rectangle(352, 840, 246, 49, 0x878787, 0.5)
+    //   .setScale(1, -1).setAlpha(0.5).setDepth(1).setBlur?.(35);
+    // this.add.rectangle(634, 843, 246, 49, 0x878787, 0.5)
+    //   .setScale(1, -1).setAlpha(0.5).setDepth(1).setBlur?.(35);
 
     // 캐릭터 이미지
     this.add.image(350, 640, 'girl').setDisplaySize(325, 405);
