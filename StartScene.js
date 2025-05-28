@@ -16,7 +16,7 @@ class StartScene extends Phaser.Scene {
     this.add.image(800, 450, 'main_bg').setDisplaySize(1600, 900);
 
     // 로고
-    this.add.image(960, 200, 'logo').setOrigin(0.5).setDisplaySize(550, 130);
+    this.add.image(960, 200, 'logo').setOrigin(0.5).setScale(0.4);
 
     // 캐릭터 그림자
     this.add.rectangle(352, 840, 246, 49, 0x878787, 0.5)
