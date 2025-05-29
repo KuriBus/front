@@ -158,9 +158,9 @@ class MainScene extends Phaser.Scene {
     this.player.setOrigin(0.5);
     this.player.setCollideWorldBounds(true);
 
-    const standardWidth = 135;
+    const standardHeight = 180;
     const texture = this.textures.get(spriteKey).getSourceImage();
-    const scale = standardWidth / texture.width;
+    const scale = standardHeight / texture.height;
     this.player.setScale(scale);
 
     this.nicknameText = this.add.text(this.player.x, this.player.y + 78, nickname, {
