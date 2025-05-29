@@ -6,13 +6,17 @@ class MainScene extends Phaser.Scene {
   preload() {
     const { roomId, character } = window.userInfo || { roomId: 1, character: 'boy1' };
 
+    // 캐릭터 이미지 로드
     this.load.image('boy1', 'assets/boy1.png');
     this.load.image('girl1', 'assets/girl1.png');
 
+    // 배경 로드
     if (roomId === 1) {
       this.load.image('bg', 'assets/classroom.png');
     } else if (roomId === 2) {
       this.load.image('bg', 'assets/cultureland.png');
+    } else if (roomId === 3) {
+      this.load.image('bg', 'assets/park.png');
     }
   }
 
@@ -25,9 +29,13 @@ class MainScene extends Phaser.Scene {
 
     this.add.image(800, 450, 'bg').setDisplaySize(1600, 900).setDepth(0);
 
-    const titleText = roomId === 1 ? '교실 1' : '문화공간';
+    const title =
+      roomId === 1 ? '교실 1' :
+      roomId === 2 ? '문화공간' :
+      '공원';
+
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
-    this.add.text(800, 50, titleText, {
+    this.add.text(800, 50, title, {
       fontSize: '32px',
       fontFamily: 'Pretendard',
       color: '#ffffff'
@@ -121,9 +129,8 @@ class MainScene extends Phaser.Scene {
       }
     };
 
-    // 선택된 캐릭터로 플레이어 생성
-    const spriteKey = character || 'boy1';
-    this.player = this.physics.add.sprite(800, 450, spriteKey);
+    // 플레이어
+    this.player = this.physics.add.sprite(800, 450, character || 'boy1');
     this.player.setDisplaySize(100, 120);
     this.player.setCollideWorldBounds(true);
     this.player.setOrigin(0.5);
@@ -156,12 +163,10 @@ class MainScene extends Phaser.Scene {
       this.player.setVelocityY(speed);
     }
 
-    // 말풍선
     if (this.activeBubble) {
       this.activeBubble.setPosition(this.player.x - 110, this.player.y - 150);
     }
 
-    // 닉네임
     if (this.nicknameText && this.nicknameBg) {
       const y = this.player.y + 78;
       this.nicknameText.setPosition(this.player.x, y);
