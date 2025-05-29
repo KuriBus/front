@@ -13,20 +13,23 @@ class NicknameScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.image(800, 450, 'nickname_bg').setDisplaySize(1600, 900);
+    const gameWidth = this.sys.game.config.width;
+    const gameHeight = this.sys.game.config.height;
+
+    this.add.image(gameWidth / 2, gameHeight / 2, 'nickname_bg').setDisplaySize(gameWidth, gameHeight);
 
     // 카드
-    this.add.rectangle(800, 450, 820, 279, 0xF8F2FC)
+    this.add.rectangle(gameWidth / 2, gameHeight / 2, 820, 279, 0xF8F2FC)
       .setOrigin(0.5)
       .setDepth(1);
 
     // 질문 텍스트 배경
-    this.add.rectangle(800, 330, 381, 72, 0xB593CC)
+    this.add.rectangle(gameWidth / 2, gameHeight / 2 - 120, 381, 72, 0xB593CC)
       .setOrigin(0.5)
       .setDepth(2);
 
     // 텍스트 표시
-    const question = this.add.text(800, 330, '당신의 이름은?', {
+    this.add.text(gameWidth / 2, gameHeight / 2 - 120, '당신의 이름은?', {
       fontFamily: 'Pretendard',
       fontSize: '32px',
       color: '#ffffff',
@@ -38,11 +41,13 @@ class NicknameScene extends Phaser.Scene {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = '이름을 입력하세요';
+
+    // 반응형 중앙 정렬
     Object.assign(input.style, {
-      position: 'absolute',
+      position: 'fixed',
       left: '50%',
-      top: '470px',
-      transform: 'translateX(-50%)',
+      top: 'calc(50% + 20px)', // 카드 중앙보다 조금 아래
+      transform: 'translate(-50%, -50%)',
       width: '489px',
       height: '60px',
       fontSize: '20px',
@@ -52,7 +57,7 @@ class NicknameScene extends Phaser.Scene {
       backgroundColor: '#ffffff',
       outline: 'none',
       zIndex: '10',
-      fontFamily: 'Pretendard'
+      fontFamily: 'Pretendard',
     });
     document.body.appendChild(input);
 
