@@ -53,6 +53,7 @@ class MainScene extends Phaser.Scene {
       event.stopPropagation();
       if (event.key === 'Enter') {
         document.getElementById('send-btn').click();
+        chatInputField.blur();
       }
     });
 
