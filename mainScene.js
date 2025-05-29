@@ -6,11 +6,9 @@ class MainScene extends Phaser.Scene {
   preload() {
     const { roomId, character } = window.userInfo || { roomId: 1, character: 'boy1' };
 
-    // 캐릭터 이미지 로드
-    this.load.image('boy1', 'assets/boy1.png');
-    this.load.image('girl1', 'assets/girl1.png');
+    const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
+    characterList.forEach(key => this.load.image(key, `assets/${key}.png`));
 
-    // 배경 로드
     if (roomId === 1) {
       this.load.image('bg', 'assets/classroom.png');
     } else if (roomId === 2) {
@@ -129,18 +127,30 @@ class MainScene extends Phaser.Scene {
       }
     };
 
-    // 플레이어
-    this.player = this.physics.add.sprite(800, 450, character || 'boy1');
-    this.player.setDisplaySize(100, 120);
-    this.player.setCollideWorldBounds(true);
+    // 플레이어 생성
+    const spriteKey = character || 'boy1';
+    this.player = this.physics.add.sprite(800, 450, spriteKey);
     this.player.setOrigin(0.5);
+    this.player.setCollideWorldBounds(true);
 
-    this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4)
-      .setOrigin(0.5).setDepth(5);
+    const standardWidth = 135;
+    const texture = this.textures.get(spriteKey).getSourceImage();
+    const scaleX = standardWidth / texture.width;
+    this.player.setScale(scaleX);
+
+    // 닉네임 텍스트 및 배경 (가변형)
     this.nicknameText = this.add.text(this.player.x, this.player.y + 78, nickname, {
       font: '14px Pretendard',
-      fill: '#ffffff'
+      fill: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 200 }
     }).setOrigin(0.5).setDepth(6);
+
+    const textWidth = this.nicknameText.width + 20;
+    const textHeight = this.nicknameText.height + 10;
+
+    this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, textWidth, textHeight, 0x000000, 0.4)
+      .setOrigin(0.5).setDepth(5);
 
     this.cursors = this.input.keyboard.createCursorKeys();
   }
@@ -171,6 +181,11 @@ class MainScene extends Phaser.Scene {
       const y = this.player.y + 78;
       this.nicknameText.setPosition(this.player.x, y);
       this.nicknameBg.setPosition(this.player.x, y);
+
+      const newWidth = this.nicknameText.width + 20;
+      const newHeight = this.nicknameText.height + 10;
+      this.nicknameBg.width = newWidth;
+      this.nicknameBg.height = newHeight;
     }
   }
 }
