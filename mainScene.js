@@ -5,17 +5,15 @@ class MainScene extends Phaser.Scene {
 
   preload() {
     const { roomId, character } = window.userInfo || { roomId: 1, character: 'boy1' };
-
     const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
     characterList.forEach(key => this.load.image(key, `assets/${key}.png`));
 
-    if (roomId === 1) {
-      this.load.image('bg', 'assets/classroom.png');
-    } else if (roomId === 2) {
-      this.load.image('bg', 'assets/cultureland.png');
-    } else if (roomId === 3) {
-      this.load.image('bg', 'assets/park.png');
-    }
+    const bgMap = {
+      1: 'classroom',
+      2: 'cultureland',
+      3: 'park'
+    };
+    this.load.image('bg', `assets/${bgMap[roomId] || 'classroom'}.png`);
   }
 
   create() {
@@ -27,11 +25,7 @@ class MainScene extends Phaser.Scene {
 
     this.add.image(800, 450, 'bg').setDisplaySize(1600, 900).setDepth(0);
 
-    const title =
-      roomId === 1 ? '교실 1' :
-      roomId === 2 ? '문화공간' :
-      '공원';
-
+    const title = roomId === 1 ? '교실 1' : roomId === 2 ? '문화공간' : '공원';
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
     this.add.text(800, 50, title, {
       fontSize: '32px',
@@ -48,6 +42,20 @@ class MainScene extends Phaser.Scene {
       </div>
     `).setOrigin(0.5).setDepth(10);
 
+    const chatInputField = this.chatInput.getChildByID('chat-message');
+    chatInputField.addEventListener('focus', () => {
+      this.input.keyboard.enabled = false;
+    });
+    chatInputField.addEventListener('blur', () => {
+      this.input.keyboard.enabled = true;
+    });
+    chatInputField.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        document.getElementById('send-btn').click();
+      }
+    });
+
     this.chatInput.addListener('click');
     this.chatInput.on('click', (event) => {
       if (event.target.id === 'send-btn') {
@@ -57,36 +65,53 @@ class MainScene extends Phaser.Scene {
           this.addChatLog(`${nickname}: ${message}`);
           inputEl.value = '';
 
-          const bubbleWidth = 220;
-          const bubbleHeight = 90;
-          const tailSize = 12;
+          const maxWidth = 220;
+          const padding = 20;
 
-          const bubbleRect = this.add.graphics();
-          bubbleRect.fillStyle(0xffffff, 1);
-          bubbleRect.fillRoundedRect(0, 0, bubbleWidth, bubbleHeight, 10);
-
-          const tail = this.add.graphics();
-          tail.fillStyle(0xffffff, 1);
-          tail.beginPath();
-          tail.moveTo(bubbleWidth / 2 - tailSize, bubbleHeight);
-          tail.lineTo(bubbleWidth / 2, bubbleHeight + tailSize);
-          tail.lineTo(bubbleWidth / 2 + tailSize, bubbleHeight);
-          tail.closePath();
-          tail.fillPath();
-
-          const msgText = this.add.text(bubbleWidth / 2, bubbleHeight / 2, message, {
+          const msgText = this.add.text(0, 0, message, {
             font: '14px Pretendard',
             color: '#000000',
-            align: 'center',
-            wordWrap: { width: bubbleWidth - 20 }
+            wordWrap: { width: maxWidth, useAdvancedWrap: true },
+            align: 'center'
           }).setOrigin(0.5);
 
-          const bubble = this.add.container(this.player.x - bubbleWidth / 2, this.player.y - 150, [
-            bubbleRect, tail, msgText
-          ]);
-          bubble.setDepth(6);
-          this.time.delayedCall(3000, () => bubble.destroy());
-          this.activeBubble = bubble;
+          this.time.delayedCall(0, () => {
+            if (this.activeBubble) {
+              this.activeBubble.destroy();
+            }
+
+            const bubbleWidth = Math.min(msgText.width + padding, maxWidth + padding);
+            const bubbleHeight = msgText.height + 30;
+            const tailSize = 12;
+
+            const bubbleRect = this.add.graphics();
+            bubbleRect.fillStyle(0xffffff, 1);
+            bubbleRect.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
+
+            const tail = this.add.graphics();
+            tail.fillStyle(0xffffff, 1);
+            tail.beginPath();
+            tail.moveTo(-tailSize, 0);
+            tail.lineTo(0, tailSize);
+            tail.lineTo(tailSize, 0);
+            tail.closePath();
+            tail.fillPath();
+            tail.setPosition(0, bubbleHeight / 2);
+
+            msgText.setPosition(0, 0);
+
+            const bubble = this.add.container(this.player.x, this.player.y - 120, [
+              bubbleRect, tail, msgText
+            ]);
+            bubble.setDepth(6);
+            this.activeBubble = bubble;
+            this.time.delayedCall(3000, () => {
+              if (this.activeBubble === bubble) {
+                bubble.destroy();
+                this.activeBubble = null;
+              }
+            });
+          });
         }
       }
     });
@@ -127,7 +152,6 @@ class MainScene extends Phaser.Scene {
       }
     };
 
-    // 플레이어 생성
     const spriteKey = character || 'boy1';
     this.player = this.physics.add.sprite(800, 450, spriteKey);
     this.player.setOrigin(0.5);
@@ -135,10 +159,9 @@ class MainScene extends Phaser.Scene {
 
     const standardWidth = 135;
     const texture = this.textures.get(spriteKey).getSourceImage();
-    const scaleX = standardWidth / texture.width;
-    this.player.setScale(scaleX);
+    const scale = standardWidth / texture.width;
+    this.player.setScale(scale);
 
-    // 닉네임 텍스트 및 배경 (가변형)
     this.nicknameText = this.add.text(this.player.x, this.player.y + 78, nickname, {
       font: '14px Pretendard',
       fill: '#ffffff',
@@ -174,7 +197,7 @@ class MainScene extends Phaser.Scene {
     }
 
     if (this.activeBubble) {
-      this.activeBubble.setPosition(this.player.x - 110, this.player.y - 150);
+      this.activeBubble.setPosition(this.player.x, this.player.y - 120);
     }
 
     if (this.nicknameText && this.nicknameBg) {
