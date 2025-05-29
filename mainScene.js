@@ -4,107 +4,170 @@ class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    // 배경/에셋 미사용
-    // this.load.image('room1_bg', 'assets/room1_bg.png');
-    // this.load.image('room2_bg', 'assets/room2_bg.png');
-    // this.load.image('chat_bg', 'assets/chat_bg.png');
+    const { roomId, character } = window.userInfo || { roomId: 1, character: 'boy1' };
+
+    this.load.image('boy1', 'assets/boy1.png');
+    this.load.image('girl1', 'assets/girl1.png');
+
+    if (roomId === 1) {
+      this.load.image('bg', 'assets/classroom.png');
+    } else if (roomId === 2) {
+      this.load.image('bg', 'assets/cultureland.png');
+    }
   }
 
   create() {
-    const { roomId, nickname, userId } = window.userInfo;
-
-    // 채팅 로그용 반투명 배경
-    const chatBg = this.add.graphics();
-    chatBg.fillStyle(0x000000, 0.5);
-    chatBg.fillRoundedRect(20, 640, 300, 180, 10);
-    chatBg.setScrollFactor(0);
-    chatBg.setDepth(1);
-
-    this.chatLogs = [];
-    this.chatLogStartY = 660;
-
-    // 로그 출력 함수
-    const addChatLog = (text) => {
-      const log = this.add.text(40, this.chatLogStartY, text, {
-        font: '14px Arial',
-        fill: '#ffffff'
-      }).setScrollFactor(0).setDepth(2);
-
-      this.chatLogs.push(log);
-      this.chatLogStartY += 20;
-
-      if (this.chatLogs.length > 8) {
-        const old = this.chatLogs.shift();
-        old.destroy();
-        this.chatLogs.forEach((l, i) => l.y = 660 + i * 20);
-        this.chatLogStartY = 660 + this.chatLogs.length * 20;
-      }
+    const { roomId, nickname, character } = window.userInfo || {
+      roomId: 1,
+      nickname: '사용자',
+      character: 'boy1'
     };
 
-    // 초록 원 텍스처 생성
-    const canvas = this.textures.createCanvas('tempPlayer', 50, 50);
-    const ctx = canvas.getContext();
-    ctx.fillStyle = '#00ff00';
-    ctx.beginPath();
-    ctx.arc(25, 25, 25, 0, Math.PI * 2);
-    ctx.fill();
-    canvas.refresh();
+    this.add.image(800, 450, 'bg').setDisplaySize(1600, 900).setDepth(0);
 
-    const player = this.physics.add.sprite(800, 450, 'tempPlayer');
-    player.setOrigin(0.5, 0.5);
-    player.setDisplaySize(50, 50);
-    player.setCollideWorldBounds(true);
+    const titleText = roomId === 1 ? '교실 1' : '문화공간';
+    this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
+    this.add.text(800, 50, titleText, {
+      fontSize: '32px',
+      fontFamily: 'Pretendard',
+      color: '#ffffff'
+    }).setOrigin(0.5).setDepth(6);
 
-    const nicknameText = this.add.text(player.x, player.y - 40, nickname, {
-      font: '16px Arial',
-      fill: '#ffffff'
-    }).setOrigin(0.5);
+    this.add.rectangle(300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
 
-    const cursors = this.input.keyboard.createCursorKeys();
-    const input = document.getElementById('chat-input');
-    input.style.display = 'block';
+    this.chatInput = this.add.dom(300, 850).createFromHTML(`
+      <div style="width: 534px; height: 58px; background: #fff; border: 3px solid #B593CC; border-radius: 12px; display: flex; align-items: center; padding: 0 25px; gap: 13px;">
+        <input id="chat-message" type="text" placeholder="메시지를 입력하세요" style="flex: 1; border: none; outline: none; font-size: 16px;" />
+        <button id="send-btn" style="width: 68px; height: 58px; background: #B593CC; border-radius: 12px; border: none; color: #fff; font-weight: bold;">→</button>
+      </div>
+    `).setOrigin(0.5).setDepth(10);
 
-    // 채팅 입력 처리
-    input.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter' && input.value.trim() !== '') {
-        const content = input.value.trim();
-        input.value = '';
+    this.chatInput.addListener('click');
+    this.chatInput.on('click', (event) => {
+      if (event.target.id === 'send-btn') {
+        const inputEl = document.getElementById('chat-message');
+        const message = inputEl.value.trim();
+        if (message) {
+          this.addChatLog(`${nickname}: ${message}`);
+          inputEl.value = '';
 
-        try {
-          await fetch('http://localhost:8080/api/chat/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, roomId, nickname, content })
-          });
-        } catch (err) {
-          console.warn('서버 없음 (무시 가능)');
+          const bubbleWidth = 220;
+          const bubbleHeight = 90;
+          const tailSize = 12;
+
+          const bubbleRect = this.add.graphics();
+          bubbleRect.fillStyle(0xffffff, 1);
+          bubbleRect.fillRoundedRect(0, 0, bubbleWidth, bubbleHeight, 10);
+
+          const tail = this.add.graphics();
+          tail.fillStyle(0xffffff, 1);
+          tail.beginPath();
+          tail.moveTo(bubbleWidth / 2 - tailSize, bubbleHeight);
+          tail.lineTo(bubbleWidth / 2, bubbleHeight + tailSize);
+          tail.lineTo(bubbleWidth / 2 + tailSize, bubbleHeight);
+          tail.closePath();
+          tail.fillPath();
+
+          const msgText = this.add.text(bubbleWidth / 2, bubbleHeight / 2, message, {
+            font: '14px Pretendard',
+            color: '#000000',
+            align: 'center',
+            wordWrap: { width: bubbleWidth - 20 }
+          }).setOrigin(0.5);
+
+          const bubble = this.add.container(this.player.x - bubbleWidth / 2, this.player.y - 150, [
+            bubbleRect, tail, msgText
+          ]);
+          bubble.setDepth(6);
+          this.time.delayedCall(3000, () => bubble.destroy());
+          this.activeBubble = bubble;
         }
-
-        // 말풍선 표시 (내용만)
-        const bubble = this.add.text(player.x, player.y - 80, content, {
-          font: '16px Arial',
-          fill: '#ffff00',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          padding: { x: 8, y: 4 }
-        }).setOrigin(0.5);
-        this.time.delayedCall(3000, () => bubble.destroy());
-
-        // 로그에 닉네임 포함 출력
-        addChatLog(`${nickname}: ${content}`);
       }
     });
 
-    // update
-    this.update = () => {
-      const speed = 200;
-      player.setVelocity(0);
+    this.chatLogs = [];
+    this.chatLogMaxHeight = 200;
+    this.chatLogBottomY = 820;
 
-      if (cursors.left.isDown) player.setVelocityX(-speed);
-      else if (cursors.right.isDown) player.setVelocityX(speed);
-      if (cursors.up.isDown) player.setVelocityY(-speed);
-      else if (cursors.down.isDown) player.setVelocityY(speed);
+    this.addChatLog = (text) => {
+      const log = this.add.text(40, 0, text, {
+        font: '16px Pretendard',
+        fill: '#ffffff',
+        wordWrap: { width: 500, useAdvancedWrap: true }
+      }).setScrollFactor(0).setDepth(5);
 
-      nicknameText.setPosition(player.x, player.y - 40);
+      this.chatLogs.push(log);
+
+      let totalHeight = 0;
+      let y = this.chatLogBottomY;
+      for (let i = this.chatLogs.length - 1; i >= 0; i--) {
+        const l = this.chatLogs[i];
+        y -= l.height + 4;
+        totalHeight += l.height + 4;
+        l.setY(y);
+      }
+
+      while (totalHeight > this.chatLogMaxHeight && this.chatLogs.length > 0) {
+        const removed = this.chatLogs.shift();
+        totalHeight -= removed.height + 4;
+        removed.destroy();
+
+        y = this.chatLogBottomY;
+        for (let i = this.chatLogs.length - 1; i >= 0; i--) {
+          const l = this.chatLogs[i];
+          y -= l.height + 4;
+          l.setY(y);
+        }
+      }
     };
+
+    // 선택된 캐릭터로 플레이어 생성
+    const spriteKey = character || 'boy1';
+    this.player = this.physics.add.sprite(800, 450, spriteKey);
+    this.player.setDisplaySize(100, 120);
+    this.player.setCollideWorldBounds(true);
+    this.player.setOrigin(0.5);
+
+    this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4)
+      .setOrigin(0.5).setDepth(5);
+    this.nicknameText = this.add.text(this.player.x, this.player.y + 78, nickname, {
+      font: '14px Pretendard',
+      fill: '#ffffff'
+    }).setOrigin(0.5).setDepth(6);
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+  }
+
+  update() {
+    if (!this.player || !this.cursors) return;
+
+    const speed = 200;
+    this.player.setVelocity(0);
+
+    if (this.cursors.left.isDown) {
+      this.player.setVelocityX(-speed);
+    } else if (this.cursors.right.isDown) {
+      this.player.setVelocityX(speed);
+    }
+
+    if (this.cursors.up.isDown) {
+      this.player.setVelocityY(-speed);
+    } else if (this.cursors.down.isDown) {
+      this.player.setVelocityY(speed);
+    }
+
+    // 말풍선
+    if (this.activeBubble) {
+      this.activeBubble.setPosition(this.player.x - 110, this.player.y - 150);
+    }
+
+    // 닉네임
+    if (this.nicknameText && this.nicknameBg) {
+      const y = this.player.y + 78;
+      this.nicknameText.setPosition(this.player.x, y);
+      this.nicknameBg.setPosition(this.player.x, y);
+    }
   }
 }
+
+export default MainScene;
