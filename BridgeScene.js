@@ -46,7 +46,40 @@ class BridgeScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5).setDepth(6);
 
-    this.add.rectangle(300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
+    this.add.rectangle(300, 750, 590, 250, 0x000000, 0.4).setDepth(2);
+
+    this.chatLogContainer = this.add.dom(300, 730).createFromHTML(`
+      <div style="position: relative;">
+        <style>
+          #chat-log-box::-webkit-scrollbar {
+            width: 6px;
+          }
+          #chat-log-box::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          #chat-log-box::-webkit-scrollbar-thumb {
+            background-color: #B593CC;
+            border-radius: 3px;
+          }
+        </style>
+        <div id="chat-log-box" style="
+          width: 534px;
+          height: 180px;
+          overflow-y: auto;
+          background: rgba(0, 0, 0, 0);
+          color: white;
+          font-size: 16px;
+          font-family: Pretendard, sans-serif;
+          padding-right: 10px;
+          padding-left: 10px;
+          padding-top: 10px;
+          box-sizing: border-box;
+          border-radius: 8px;
+          scrollbar-width: thin;
+          scrollbar-color: #B593CC transparent;
+        "></div>
+      </div>
+    `).setOrigin(0.5).setDepth(6);
 
     this.chatInput = this.add.dom(300, 850).createFromHTML(`
       <div style="width: 534px; height: 58px; background: #fff; border: 3px solid #B593CC; border-radius: 12px; display: flex; align-items: center; padding: 0 25px; gap: 13px;">
@@ -125,40 +158,13 @@ class BridgeScene extends Phaser.Scene {
       }
     });
 
-    this.chatLogs = [];
-    this.chatLogMaxHeight = 200;
-    this.chatLogBottomY = 820;
-
     this.addChatLog = (text) => {
-      const log = this.add.text(40, 0, text, {
-        font: '16px Pretendard',
-        fill: '#ffffff',
-        wordWrap: { width: 500, useAdvancedWrap: true }
-      }).setScrollFactor(0).setDepth(5);
-
-      this.chatLogs.push(log);
-
-      let totalHeight = 0;
-      let y = this.chatLogBottomY;
-      for (let i = this.chatLogs.length - 1; i >= 0; i--) {
-        const l = this.chatLogs[i];
-        y -= l.height + 4;
-        totalHeight += l.height + 4;
-        l.setY(y);
-      }
-
-      while (totalHeight > this.chatLogMaxHeight && this.chatLogs.length > 0) {
-        const removed = this.chatLogs.shift();
-        totalHeight -= removed.height + 4;
-        removed.destroy();
-
-        y = this.chatLogBottomY;
-        for (let i = this.chatLogs.length - 1; i >= 0; i--) {
-          const l = this.chatLogs[i];
-          y -= l.height + 4;
-          l.setY(y);
-        }
-      }
+      const chatBox = document.getElementById('chat-log-box');
+      const p = document.createElement('p');
+      p.textContent = text;
+      p.style.margin = '0 0 6px 0';
+      chatBox.appendChild(p);
+      chatBox.scrollTop = chatBox.scrollHeight;
     };
 
     const spriteKey = this.character;
