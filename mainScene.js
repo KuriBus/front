@@ -198,16 +198,16 @@ class MainScene extends Phaser.Scene {
   createPortals(roomId) {
     const portalConfig = {
       1: [
-        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 4 } },
-        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }
+        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 5 } },
+        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 4 } }
       ],
       2: [
-        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 5 } },
-        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }
+        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 6 } },
+        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }
       ],
       3: [
-        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 6 } },
-        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 4 } }
+        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 4 } },
+        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }
       ]
     };
 

@@ -21,9 +21,9 @@ class BridgeScene extends Phaser.Scene {
     });
 
     const bgMap = {
-      4: 'bridge1',
+      4: 'bridge3',
       5: 'bridge2',
-      6: 'bridge3'
+      6: 'bridge1'
     };
     const bgKey = bgMap[this.roomId] || 'bridge1';
     const uniqueBgKey = `bg${this.roomId}`;
@@ -202,12 +202,12 @@ class BridgeScene extends Phaser.Scene {
         { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 3 } }
       ],
       5: [
-        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 1 } },
-        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 2 } }
+        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 2 } },
+        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 1 } }
       ],
       6: [
-        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 2 } },
-        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 3 } }
+        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 3 } },
+        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 2 } }
       ]
     };
 
