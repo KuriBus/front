@@ -1,13 +1,13 @@
-class MainScene extends Phaser.Scene {
+class BridgeScene extends Phaser.Scene {
   constructor() {
-    super('MainScene');
+    super('BridgeScene');
   }
 
   init(data) {
     if (data && data.userInfo) {
       window.userInfo = data.userInfo;
     }
-    this.roomId = window.userInfo?.roomId || 1;
+    this.roomId = window.userInfo?.roomId || 4;
     this.character = window.userInfo?.character || 'boy1';
     this.nickname = window.userInfo?.nickname || '사용자';
   }
@@ -21,11 +21,11 @@ class MainScene extends Phaser.Scene {
     });
 
     const bgMap = {
-      1: 'classroom',
-      2: 'cultureland',
-      3: 'park'
+      4: 'bridge1',
+      5: 'bridge2',
+      6: 'bridge3'
     };
-    const bgKey = bgMap[this.roomId] || 'classroom';
+    const bgKey = bgMap[this.roomId] || 'bridge1';
     const uniqueBgKey = `bg${this.roomId}`;
 
     if (!this.textures.exists(uniqueBgKey)) {
@@ -38,7 +38,7 @@ class MainScene extends Phaser.Scene {
   create() {
     this.add.image(800, 450, this.bgKeyToUse).setDisplaySize(1600, 900).setDepth(0);
 
-    const title = this.roomId === 1 ? '교실 1' : this.roomId === 2 ? '문화공간' : '공원';
+    const title = this.roomId === 4 ? '통로 1' : this.roomId === 5 ? '통로 2' : this.roomId === 6 ? '통로 3' : '알 수 없는 방';
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
     this.add.text(800, 50, title, {
       fontSize: '32px',
@@ -191,17 +191,17 @@ class MainScene extends Phaser.Scene {
 
   createPortals(roomId) {
     const portalConfig = {
-      1: [
-        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 4 } },
-        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }
+      4: [
+        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 1 } },
+        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 3 } }
       ],
-      2: [
-        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 5 } },
-        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }
+      5: [
+        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 1 } },
+        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 2 } }
       ],
-      3: [
-        { x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 4 } },
-        { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }
+      6: [
+        { x: 100, y: 450, target: { scene: 'MainScene', roomId: 2 } },
+        { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 3 } }
       ]
     };
 
@@ -258,4 +258,4 @@ class MainScene extends Phaser.Scene {
   }
 }
 
-export default MainScene;
+export default BridgeScene;
