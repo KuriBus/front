@@ -1,5 +1,3 @@
-// MainScene.js
-
 import { stompClient } from './game.js';
 
 const SERVER_URL = 'https://kuriverse.com'; 
