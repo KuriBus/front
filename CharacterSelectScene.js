@@ -1,3 +1,5 @@
+const SERVER_URL = 'https://kuriverse.com'; 
+
 class CharacterSelectScene extends Phaser.Scene {
   constructor() {
     super('CharacterSelectScene');
@@ -13,10 +15,42 @@ class CharacterSelectScene extends Phaser.Scene {
     this.load.image('girl3', 'assets/girl3.png');
   }
 
-  create() {
-    this.add.image(800, 450, 'character_bg').setDisplaySize(1600, 900);
+  create(data) {
+    const nickname = data?.nickname || window.userInfo?.nickname;
+    if (!nickname) {
+      alert('닉네임 인식 실패로 시작화면으로 돌아갑니다.');
+      this.scene.start('NicknameScene');
+      return;
+    }
 
-    // 타이틀
+    const characterKeyToBodytype = {
+      'boy1': 1, 'boy2': 2, 'boy3': 3,
+      'girl1': 4, 'girl2': 5, 'girl3': 6
+    };
+
+    const saveCustomization = async (nickname, characterKey) => {
+      const bodytypeInt = characterKeyToBodytype[characterKey];
+
+      try {
+        const response = await fetch(`${SERVER_URL}/api/customization/update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ nickname: nickname, bodyType: bodytypeInt }) 
+        });
+        if (response.ok) {
+          console.log("커스터마이징 저장 완료:", `nickname=${nickname}, bodytype=${bodytypeInt}`);
+          this.scene.start('WorldMapScene', { nickname, character: characterKey });
+        } else {
+          const errorText = await response.text();
+          alert(`커스터마이징 저장 실패: ${errorText}`);
+        }
+      } catch (error) {
+        console.error("저장 중 오류:", error);
+      }
+    };
+
+    this.add.image(800, 450, 'character_bg').setDisplaySize(1600, 900);
     this.add.rectangle(800, 100, 496, 72, 0xB593CC).setOrigin(0.5).setDepth(1);
     this.add.text(800, 100, '캐릭터를 선택해주세요', {
       fontFamily: 'Pretendard',
@@ -25,7 +59,6 @@ class CharacterSelectScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5).setDepth(2);
 
-    // 더 넓은 간격을 위한 설정
     const startX = 300;
     const gapX = 500;
 
@@ -43,17 +76,16 @@ class CharacterSelectScene extends Phaser.Scene {
         .setDisplaySize(200, 250)
         .setInteractive({ useHandCursor: true })
         .setDepth(3);
-
-      sprite.on('pointerdown', () => this.selectCharacter(key));
+      sprite.on('pointerdown', () => {
+        this.selectCharacter(key);
+        saveCustomization(nickname, key);
+      });
     });
   }
 
-  selectCharacter(character) {
+  selectCharacter(characterKey) {
     if (!window.userInfo) window.userInfo = {};
-    window.userInfo.character = character;
-
-    this.scene.start('WorldMapScene');
-    this.scene.stop();
+    window.userInfo.character = characterKey;
   }
 }
 

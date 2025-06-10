@@ -2,9 +2,9 @@ import { stompClient } from './game.js';
 
 const SERVER_URL = 'https://kuriverse.com'; 
 
-class MainScene extends Phaser.Scene {
+class BridgeScene extends Phaser.Scene {
   constructor() {
-    super('MainScene');
+    super('BridgeScene');
     this.currentDirection = null;
     this.moveInterval = null;
     this.otherPlayers = new Map();
@@ -20,7 +20,7 @@ class MainScene extends Phaser.Scene {
     if (data && data.userInfo) {
       window.userInfo = data.userInfo;
     }
-    this.roomId = window.userInfo?.roomId || 1;
+    this.roomId = window.userInfo?.roomId || 4;
     this.character = window.userInfo?.character || 'boy1';
     this.nickname = window.userInfo?.nickname || '사용자';
   }
@@ -31,8 +31,8 @@ class MainScene extends Phaser.Scene {
       if (!this.textures.exists(key)) this.load.image(key, `assets/${key}.png`);
     });
 
-    const bgMap = { 1: 'classroom', 2: 'park', 3: 'cultureland' };
-    const bgKey = bgMap[this.roomId] || 'classroom';
+    const bgMap = { 4: 'bridge3', 5: 'bridge2', 6: 'bridge1' };
+    const bgKey = bgMap[this.roomId] || 'bridge1';
     if (!this.textures.exists(bgKey)) {
         this.load.image(bgKey, `assets/${bgKey}.png`);
     }
@@ -43,19 +43,18 @@ class MainScene extends Phaser.Scene {
     this.input.keyboard.enabled = true;
     this.otherPlayers.clear();
     this.bodytypeMap.clear();
+    this.roomNameMap = { 4: "통로 1", 5: "통로 2", 6: "통로 3" };
+    this.currentRoomName = this.roomNameMap[this.roomId] || "알 수 없는 통로";
     
-    this.roomNameMap = { 1: "교실", 2: "공원", 3: "문화공간" };
-    this.currentRoomName = this.roomNameMap[this.roomId] || "교실";
-
     this.events.on('shutdown', this.shutdown, this);
-    
+
     this.input.keyboard.on('keydown', this.handleKeyDown, this);
     this.input.keyboard.on('keyup', this.handleKeyUp, this);
 
     this.initWebSocket(this.roomId, this.nickname);
 
     this.add.image(800, 450, this.bgKeyToUse).setDisplaySize(1600, 900).setDepth(0);
-    const titleText = this.currentRoomName || '알 수 없는 곳';
+    const titleText = this.currentRoomName;
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
     this.add.text(800, 50, titleText, { fontSize: '32px', fontFamily: 'Pretendard', color: '#ffffff' }).setOrigin(0.5).setDepth(6);
     this.add.rectangle(300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
@@ -108,13 +107,6 @@ class MainScene extends Phaser.Scene {
 
     this.zKey = this.input.keyboard.addKey('Z');
     this.createPortals(this.roomId);
-
-    window.addEventListener('beforeunload', () => {
-        if (stompClient.active) {
-            this.leaveRoom(this.roomId, this.nickname);
-            stompClient.deactivate();
-        }
-    });
   }
 
   createBubble(message) {
@@ -158,7 +150,7 @@ class MainScene extends Phaser.Scene {
         console.error("퇴장 오류:", error);
     }
   }
-  
+
   async getAllCustomizations() {
     try {
       const response = await fetch(`${SERVER_URL}/api/customization/all`); 
@@ -238,9 +230,9 @@ class MainScene extends Phaser.Scene {
 
   createPortals(roomId) {
     const portalConfig = {
-      1: [{ x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }, { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 4 } }],
-      2: [{ x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }, { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }],
-      3: [{ x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 4 } }, { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }]
+      4: [{ x: 100, y: 450, target: { scene: 'MainScene', roomId: 1 } }, { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 3 } }],
+      5: [{ x: 100, y: 450, target: { scene: 'MainScene', roomId: 2 } }, { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 1 } }],
+      6: [{ x: 100, y: 450, target: { scene: 'MainScene', roomId: 3 } }, { x: 1500, y: 450, target: { scene: 'MainScene', roomId: 2 } }]
     };
     if (!portalConfig[roomId]) return;
 
@@ -281,7 +273,7 @@ class MainScene extends Phaser.Scene {
         this.activePortal = null;
     }
   }
-  
+
   handleKeyDown(event) {
     if (!this.input.keyboard.enabled) return;
     const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
@@ -309,7 +301,7 @@ class MainScene extends Phaser.Scene {
   }
   
   shutdown() {
-    console.log(`MainScene shutdown: Cleaning up...`);
+    console.log(`BridgeScene shutdown: Cleaning up...`);
     this.input.keyboard.off('keydown', this.handleKeyDown, this);
     this.input.keyboard.off('keyup', this.handleKeyUp, this);
     if (this.customizationSub) this.customizationSub.unsubscribe();
@@ -318,4 +310,4 @@ class MainScene extends Phaser.Scene {
   }
 }
 
-export default MainScene;
+export default BridgeScene;
