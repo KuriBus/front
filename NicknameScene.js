@@ -5,7 +5,6 @@ class NicknameScene extends Phaser.Scene {
 
   preload() {
     this.load.image('nickname_bg', 'assets/nicknamebg.png');
-
     const fontLink = document.createElement('link');
     fontLink.rel = 'stylesheet';
     fontLink.href = 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css';
@@ -13,22 +12,49 @@ class NicknameScene extends Phaser.Scene {
   }
 
   create() {
+    const login = async (nickname) => {
+      try {
+        const response = await fetch(`${SERVER_URL}/api/users/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ nickname }),
+        });
+
+        if (!response.ok) {
+          const message = await response.text();
+          console.error(`로그인 실패 (${response.status}):`, message);
+          throw new Error(`로그인 실패: ${message}`);
+        }
+
+        const data = await response.json();
+
+        window.userInfo = {
+          nickname: nickname,
+          userId: data.userId,
+          roomId: data.roomId || null,
+          character: data.character || null
+        };
+
+        console.log("로그인 성공:", nickname);
+        this.inputElement.remove();
+        this.scene.start('CharacterSelectScene', { nickname: nickname });
+
+      } catch (error) {
+        console.error("로그인 오류:", error);
+        alert("로그인 실패: 닉네임을 다시 확인해주세요.");
+      }
+    };
+
     const gameWidth = this.sys.game.config.width;
     const gameHeight = this.sys.game.config.height;
-
     this.add.image(gameWidth / 2, gameHeight / 2, 'nickname_bg').setDisplaySize(gameWidth, gameHeight);
 
-    // 카드
-    this.add.rectangle(gameWidth / 2, gameHeight / 2, 820, 279, 0xF8F2FC)
-      .setOrigin(0.5)
-      .setDepth(1);
+    this.add.rectangle(gameWidth / 2, gameHeight / 2, 820, 279, 0xF8F2FC).setOrigin(0.5).setDepth(1);
+    this.add.rectangle(gameWidth / 2, gameHeight / 2 - 120, 381, 72, 0xB593CC).setOrigin(0.5).setDepth(2);
 
-    // 질문 텍스트 배경
-    this.add.rectangle(gameWidth / 2, gameHeight / 2 - 120, 381, 72, 0xB593CC)
-      .setOrigin(0.5)
-      .setDepth(2);
-
-    // 텍스트 표시
     this.add.text(gameWidth / 2, gameHeight / 2 - 120, '당신의 이름은?', {
       fontFamily: 'Pretendard',
       fontSize: '32px',
@@ -37,16 +63,15 @@ class NicknameScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5).setDepth(3);
 
-    // 입력창
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = '이름을 입력하세요';
+    this.inputElement = input;
 
-    // 반응형 중앙 정렬
     Object.assign(input.style, {
       position: 'fixed',
       left: '50%',
-      top: 'calc(50% + 20px)', // 카드 중앙보다 조금 아래
+      top: 'calc(50% + 20px)',
       transform: 'translate(-50%, -50%)',
       width: '489px',
       height: '60px',
@@ -59,6 +84,7 @@ class NicknameScene extends Phaser.Scene {
       zIndex: '10',
       fontFamily: 'Pretendard',
     });
+
     document.body.appendChild(input);
 
     input.addEventListener('keydown', (event) => {
@@ -68,23 +94,15 @@ class NicknameScene extends Phaser.Scene {
           alert('이름을 입력하세요.');
           return;
         }
-
-        window.userInfo = {
-          nickname,
-          userId: crypto.randomUUID(),
-          roomId: null,
-          character: null 
-        };
-
-        input.remove();
-        this.scene.start('CharacterSelectScene');
+        login(nickname);
       }
     });
   }
 
   shutdown() {
-    const input = document.querySelector('input');
-    if (input) input.remove();
+    if (this.inputElement) {
+      this.inputElement.remove();
+    }
   }
 }
 
