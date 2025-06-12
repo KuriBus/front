@@ -41,13 +41,9 @@ class MainScene extends Phaser.Scene {
     }
     this.bgKeyToUse = bgKey;
 
-    const bgmMap = {
-      1: 'classroombgm',
-      2: 'parkbgm',
-      3: 'culturelandbgm'
-    };
-    const bgmKey = bgmMap[this.roomId] || 'classroombgm';
-    this.load.audio('bgm', `assets/audio/${bgmKey}.mp3`);
+    this.load.audio('classroombgm', 'assets/audio/classroombgm.mp3');
+    this.load.audio('parkbgm', 'assets/audio/parkbgm.mp3');
+    this.load.audio('culturelandbgm', 'assets/audio/culturelandbgm.mp3');
   }
 
   isStompConnected() {
@@ -61,7 +57,13 @@ class MainScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', this.handleKeyDown, this);
     this.input.keyboard.on('keyup', this.handleKeyUp, this);
 
-    this.bgm = this.sound.add('bgm', { loop: true, volume: 0.5 });
+    const bgmKey = {
+      1: 'classroombgm',
+      2: 'parkbgm',
+      3: 'culturelandbgm'
+    }[this.roomId] || 'classroombgm';
+
+    this.bgm = this.sound.add(bgmKey, { loop: true, volume: 0.5 });
     this.bgm.play();
 
 
@@ -139,7 +141,7 @@ class MainScene extends Phaser.Scene {
       chatInputField.addEventListener('blur', () => this.input.keyboard.enabled = true);
     });
 
-    this.player = this.physics.add.sprite(800, 450, this.character).setDisplaySize(100, 120).setCollideWorldBounds(true).setOrigin(0.5);
+    this.player = this.physics.add.sprite(800, 650, this.character).setDisplaySize(100, 120).setCollideWorldBounds(true).setOrigin(0.5);
     this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4).setOrigin(0.5).setDepth(5);
     this.nicknameText = this.add.text(this.player.x, this.player.y + 78, this.nickname, { font: '14px Pretendard', fill: '#ffffff' }).setOrigin(0.5).setDepth(6);
 
@@ -155,6 +157,31 @@ class MainScene extends Phaser.Scene {
     });
 
     this.initWebSocket(this.roomId, this.nickname);
+
+    // NPC 자동 생성 타이머
+    this.time.addEvent({
+      delay: 3000, // 3초마다 한 명씩 생성
+      loop: true,
+      callback: () => {
+        const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
+        const key = Phaser.Utils.Array.GetRandom(characterList);
+
+        const fromLeft = Math.random() < 0.5;
+        const startX = fromLeft ? -50 : 1650;
+        const endX = fromLeft ? 1650 : -50;
+        const y = Phaser.Math.Between(300, 700);
+
+        const npc = this.add.sprite(startX, y, key).setDisplaySize(100, 120).setDepth(1);
+        npc.setFlipX(!fromLeft); // 오른쪽 이동 시 반전
+
+        this.tweens.add({
+          targets: npc,
+          x: endX,
+          duration: Phaser.Math.Between(6000, 10000),
+          onComplete: () => npc.destroy()
+        });
+      }
+    });
   }
 
   async joinRoom(roomId, nickname) {
@@ -380,6 +407,11 @@ class MainScene extends Phaser.Scene {
 
     if (this.activePortal && Phaser.Input.Keyboard.JustDown(this.eKey)) {
       this.input.keyboard.enabled = false;
+      if (this.bgm) {
+        this.bgm.stop();
+        this.bgm.destroy();
+        this.bgm = null;
+      }
       this.leaveRoom(this.roomId, this.nickname).finally(() => {
         window.userInfo.roomId = this.activePortal.roomId;
         this.scene.start(this.activePortal.scene, { userInfo: window.userInfo });
@@ -422,11 +454,11 @@ class MainScene extends Phaser.Scene {
     if (this.positionsSub) this.positionsSub.unsubscribe();
     if (this.chatSub) this.chatSub.unsubscribe();
     if (this.moveInterval) clearInterval(this.moveInterval);
-    if (this.bgm) {
-      this.bgm.stop();
-      this.bgm.destroy();
-      this.bgm = null;
-    }
+    // if (this.bgm) {
+    //   this.bgm.stop();
+    //   this.bgm.destroy();
+    //   this.bgm = null;
+    // }
   }
 }
 

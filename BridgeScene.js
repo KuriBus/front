@@ -400,6 +400,11 @@ class BridgeScene extends Phaser.Scene {
 
     if (this.activePortal && Phaser.Input.Keyboard.JustDown(this.eKey)) {
       this.input.keyboard.enabled = false;
+      if (this.bgm) {
+        this.bgm.stop();
+        this.bgm.destroy();
+        this.bgm = null;
+      }
       this.leaveRoom(this.roomId, this.nickname).finally(() => {
         window.userInfo.roomId = this.activePortal.roomId;
         this.scene.start(this.activePortal.scene, { userInfo: window.userInfo });
