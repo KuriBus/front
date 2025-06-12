@@ -167,6 +167,34 @@ class BridgeScene extends Phaser.Scene {
     });
 
     this.initWebSocket(this.roomId, this.nickname);
+
+    this.time.addEvent({
+      delay: 3000, 
+      loop: true,
+      callback: () => {
+        const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
+        const key = Phaser.Utils.Array.GetRandom(characterList);
+
+        const fromLeft = Math.random() < 0.5;
+        const startX = fromLeft ? -50 : 1650;
+        const endX = fromLeft ? 1650 : -50;
+
+        // y 좌표 범위 지정
+        const y = Phaser.Math.Between(600, 880);
+
+        const npc = this.add.sprite(startX, y, key)
+          .setDisplaySize(100, 120)
+          .setDepth(1);
+        npc.setFlipX(!fromLeft);
+
+        this.tweens.add({
+          targets: npc,
+          x: endX,
+          duration: Phaser.Math.Between(6000, 10000),
+          onComplete: () => npc.destroy()
+        });
+      }   
+    });
   }
 
   async joinRoom(roomId, nickname) {
