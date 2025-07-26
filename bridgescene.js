@@ -2,9 +2,9 @@ import { stompClient } from './game.js';
 
 const SERVER_URL = 'https://kuriverse.shop';
 
-class MainScene extends Phaser.Scene {
+class BridgeScene extends Phaser.Scene {
   constructor() {
-    super('MainScene');
+    super('BridgeScene');
     this.currentDirection = null;
     this.moveInterval = null;
     this.otherPlayers = new Map();
@@ -21,79 +21,89 @@ class MainScene extends Phaser.Scene {
     if (data && data.userInfo) {
       window.userInfo = data.userInfo;
     }
-    this.roomId = window.userInfo?.roomId || 1;
+    this.roomId = window.userInfo?.roomId || 4;
     this.character = window.userInfo?.character || 'boy1';
     this.nickname = window.userInfo?.nickname || '사용자';
-    this.roomNameMap = { 1: "교실", 2: "공원", 3: "문화공간" };
-    this.currentRoomName = this.roomNameMap[this.roomId] || "교실";
   }
 
   preload() {
+    this.load.audio('bridgeBgm', 'assets/audio/bridgebgm.mp3');
     const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
     characterList.forEach(key => {
       if (!this.textures.exists(key)) this.load.image(key, `assets/${key}.png`);
     });
 
-    const bgMap = { 1: 'classroom', 2: 'park', 3: 'cultureland' };
-    const bgKey = bgMap[this.roomId] || 'classroom';
+    const bgMap = { 4: 'bridge3', 5: 'bridge2', 6: 'bridge1' };
+    const bgKey = bgMap[this.roomId] || 'bridge1';
     if (!this.textures.exists(bgKey)) {
       this.load.image(bgKey, `assets/${bgKey}.png`);
     }
     this.bgKeyToUse = bgKey;
-
-    this.load.audio('classroombgm', 'assets/audio/classroombgm.mp3');
-    this.load.audio('parkbgm', 'assets/audio/parkbgm.mp3');
-    this.load.audio('culturelandbgm', 'assets/audio/culturelandbgm.mp3');
   }
 
   isStompConnected() {
-    return stompClient && stompClient.connected;
+    return stompClient && stompClient.active;
   }
 
   create() {
+    this.bgm = this.sound.add('bridgeBgm', { loop: true, volume: 0.1 });
+    this.bgm.play();
     this.input.keyboard.enabled = true;
     this.otherPlayers.clear();
     this.bodytypeMap.clear();
+    this.roomNameMap = { 4: "통로 1", 5: "통로 2", 6: "통로 3" };
+    this.currentRoomName = this.roomNameMap[this.roomId] || "알 수 없는 통로";
+
+    this.events.on('shutdown', this.shutdown, this);
+
     this.input.keyboard.on('keydown', this.handleKeyDown, this);
     this.input.keyboard.on('keyup', this.handleKeyUp, this);
 
-    const bgmKey = {
-      1: 'classroombgm',
-      2: 'parkbgm',
-      3: 'culturelandbgm'
-    }[this.roomId] || 'classroombgm';
-
-    this.bgm = this.sound.add(bgmKey, { loop: true, volume: 0.1 });
-    this.bgm.play();
-
-
     this.add.image(800, 450, this.bgKeyToUse).setDisplaySize(1600, 900).setDepth(0);
-    const titleText = this.currentRoomName || '알 수 없는 곳';
+    const titleText = this.currentRoomName;
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
     this.add.text(800, 50, titleText, { fontSize: '32px', fontFamily: 'Pretendard', color: '#ffffff' }).setOrigin(0.5).setDepth(6);
     this.add.rectangle(300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
 
-    // 채팅 로그 DOM
     this.chatLogContainer = this.add.dom(300, 730).createFromHTML(`
-      <div style="position: relative;">
-        <style>
-          #chat-log-box::-webkit-scrollbar { width: 6px; }
-          #chat-log-box::-webkit-scrollbar-track { background: transparent; }
-          #chat-log-box::-webkit-scrollbar-thumb { background-color: #B593CC; border-radius: 3px; }
-        </style>
-        <div id="chat-log-box" style="width: 534px; height: 180px; overflow-y: auto; background: rgba(0,0,0,0); color: white; font-size: 16px; font-family: Pretendard, sans-serif; padding: 10px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #B593CC transparent;"></div>
-      </div>
-    `).setOrigin(0.5).setDepth(6);
+  <div style="position: relative;">
+    <style>
+      #chat-log-box::-webkit-scrollbar { width: 6px; }
+      #chat-log-box::-webkit-scrollbar-track { background: transparent; }
+      #chat-log-box::-webkit-scrollbar-thumb { background-color: #B593CC; border-radius: 3px; }
+    </style>
+    <div id="chat-log-box" style="width: 534px; height: 180px; overflow-y: auto; background: rgba(0,0,0,0); color: white; font-size: 16px; font-family: Pretendard, sans-serif; padding: 10px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #B593CC transparent;"></div>
+  </div>
+`).setOrigin(0.5).setDepth(6);
 
-    // 채팅 입력창 DOM
     this.chatInput = this.add.dom(300, 850).createFromHTML(`
-      <div style="width: 534px; height: 58px; background: #fff; border: 3px solid #B593CC; border-radius: 12px; display: flex; align-items: center; padding: 0 25px; gap: 13px;">
-        <input id="chat-message" type="text" placeholder="메시지를 입력하세요" style="flex: 1; border: none; outline: none; font-size: 16px;" />
-        <button id="send-btn" style="width: 68px; height: 58px; background: #B593CC; border-radius: 12px; border: none; color: #fff; font-weight: bold;">→</button>
-      </div>
-    `).setOrigin(0.5).setDepth(10);
+  <div style="width: 534px; height: 58px; background: #fff; border: 3px solid #B593CC; border-radius: 12px; display: flex; align-items: center; padding: 0 25px; gap: 13px;">
+    <input id="chat-message" type="text" placeholder="메시지를 입력하세요" style="flex: 1; border: none; outline: none; font-size: 16px;" />
+    <button id="send-btn" style="width: 68px; height: 58px; background: #B593CC; border-radius: 12px; border: none; color: #fff; font-weight: bold;">→</button>
+  </div>
+`).setOrigin(0.5).setDepth(10);
 
-    // 채팅 로그 추가 함수
+    this.chatInput.on('create', (dom) => {
+      this.chatInputField = dom.getChildByID('chat-message');
+      const sendButton = dom.getChildByID('send-btn');
+      const sendMessage = () => {
+        const message = this.chatInputField.value.trim();
+        if (message) {
+          this.addChatLog(`${this.nickname}: ${message}`);
+          this.chatInputField.value = '';
+          this.createBubble(message);
+        }
+        this.chatInputField.blur();
+      };
+
+      this.chatInputField.addEventListener('focus', () => this.input.keyboard.enabled = false);
+      this.chatInputField.addEventListener('blur', () => this.input.keyboard.enabled = true);
+      this.chatInputField.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') sendMessage();
+      });
+      sendButton.addEventListener('click', sendMessage);
+    });
+
     this.addChatLog = (text) => {
       const chatBox = this.chatLogContainer.getChildByID('chat-log-box');
       if (chatBox) {
@@ -125,16 +135,17 @@ class MainScene extends Phaser.Scene {
         } else if (!this.isStompConnected()) {
           this.addChatLog('[시스템] 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.');
         }
+        if (chatInputField.value.trim() === '') {
+          setTimeout(() => {
+            chatInputField.blur();
+          }, 10); // 약간의 딜레이를 주어 blur가 정상 동작하도록
+        }
       };
       // 엔터키 전송
       chatInputField.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
           sendMessage();
-          // 입력창이 비어있고, 엔터키가 다시 눌린 경우(즉, 메시지 전송 후 바로 엔터)
-          if (chatInputField.value.trim() === '') {
-            chatInputField.blur(); // 포커스 해제 → 게임 키 입력 활성화
-          }
         }
       });
       // 버튼 클릭 전송
@@ -170,7 +181,7 @@ class MainScene extends Phaser.Scene {
     for (let i = 0; i < npcCount; i++) {
       const key = Phaser.Utils.Array.GetRandom(characterList);
       const x = Phaser.Math.Between(100, 1500);
-      const y = Phaser.Math.Between(300, 880);
+      const y = Phaser.Math.Between(600, 880);
 
       const npc = this.add.sprite(x, y, key)
       .setDisplaySize(100, 120)
@@ -197,7 +208,7 @@ class MainScene extends Phaser.Scene {
       await fetch(`${SERVER_URL}/api/rooms/${roomId}/leave`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname })
+        body: JSON.stringify({ nickname: nickname })
       });
       console.log("방 퇴장 완료");
     } catch (error) {
@@ -227,11 +238,11 @@ class MainScene extends Phaser.Scene {
 
     if (stompClient.active) {
       this.setupSubscriptions();
-      stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname, direction: "init", roomId }) });
+      stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname, direction: "init", roomId, x: 800 / 40, y: 650 / 40 }) });
     } else {
       stompClient.onConnect = () => {
         this.setupSubscriptions();
-        stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname, direction: "init", roomId }) });
+        stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname, direction: "init", roomId, x: 800 / 40, y: 650 / 40 }) });
       };
     }
   }
@@ -262,7 +273,6 @@ class MainScene extends Phaser.Scene {
       if (myData && this.player) {
         const SCALE = 16;
         this.player.setPosition(myData.x * SCALE, myData.y * SCALE);
-        //this.player.setPosition(myData.x, myData.y);
       }
       usersInSameRoom.forEach(pos => {
         if (pos.nickname === this.nickname) return;
@@ -283,26 +293,21 @@ class MainScene extends Phaser.Scene {
       });
       this.otherPlayers.forEach((playerData, nick) => {
         if (!receivedNicknames.has(nick)) {
-          playerData.sprite.destroy();
-          playerData.nicknameBg.destroy();
-          playerData.nicknameText.destroy();
-          if (playerData.chatBubble) playerData.chatBubble.destroy();
-          this.otherPlayers.delete(nick);
-          this.bodytypeMap.delete(nick);
+          playerData.sprite.destroy(); playerData.nicknameBg.destroy(); playerData.nicknameText.destroy();
+          this.otherPlayers.delete(nick); this.bodytypeMap.delete(nick);
         }
       });
     });
 
     stompClient.subscribe(`/queue/warnings/${this.nickname}`, (msg) => {
-      this.addChatLog(`[⚠️ 경고] ${msg.body}`);
-    });
+    this.addChatLog(`[⚠️ 경고] ${msg.body}`);
+  });
 
-    // 에러 메시지 구독 추가
-    stompClient.subscribe(`/queue/errors/${this.nickname}`, (msg) => {
-      this.addChatLog(`[❌ 에러] ${msg.body}`);
-    });
-
-    // 채팅 메시지 구독
+  // 에러 메시지 구독 추가
+  stompClient.subscribe(`/queue/errors/${this.nickname}`, (msg) => {
+    this.addChatLog(`[❌ 에러] ${msg.body}`);
+  });
+    
     this.chatSub = stompClient.subscribe(`/topic/room/${this.roomId}`, (msg) => {
       let chat;
       try {
@@ -313,15 +318,19 @@ class MainScene extends Phaser.Scene {
       const sender = chat.nickname;
       const content = chat.content;
       this.addChatLog(`[${sender}] ${content}`);
+      // 자신의 말풍선 표시
       if (sender === this.nickname) {
         this.showChatBubble(this.player, content, true);
-      } else if (this.otherPlayers.has(sender)) {
+      }
+      // 타 플레이어의 말풍선 표시
+      else if (this.otherPlayers.has(sender)) {
         this.showChatBubble(this.otherPlayers.get(sender).sprite, content, false, sender);
       }
     });
   }
 
   showChatBubble(targetSprite, message, isMe, nickname = null) {
+    // 자신의 말풍선 or 타 플레이어 말풍선이 이미 있으면 제거
     if (isMe && this.activeBubble) {
       this.activeBubble.destroy();
       this.activeBubble = null;
@@ -335,10 +344,12 @@ class MainScene extends Phaser.Scene {
     const bubbleHeight = 90;
     const tailSize = 12;
 
+    // 말풍선 박스
     const bubbleRect = this.add.graphics();
     bubbleRect.fillStyle(0xffffff, 1);
     bubbleRect.fillRoundedRect(0, 0, bubbleWidth, bubbleHeight, 10);
 
+    // 말풍선 꼬리
     const tail = this.add.graphics();
     tail.fillStyle(0xffffff, 1);
     tail.beginPath();
@@ -348,6 +359,7 @@ class MainScene extends Phaser.Scene {
     tail.closePath();
     tail.fillPath();
 
+    // 메시지 텍스트
     const msgText = this.add.text(bubbleWidth / 2, bubbleHeight / 2, message, {
       font: '14px Pretendard',
       color: '#000000',
@@ -355,12 +367,14 @@ class MainScene extends Phaser.Scene {
       wordWrap: { width: bubbleWidth - 20 }
     }).setOrigin(0.5);
 
+    // 말풍선 컨테이너 (타겟 스프라이트 기준 위치)
     const bubble = this.add.container(
       targetSprite.x - bubbleWidth / 2,
       targetSprite.y - 150,
       [bubbleRect, tail, msgText]
     ).setDepth(6);
 
+    // 3초 후 말풍선 제거
     this.time.delayedCall(3000, () => {
       bubble.destroy();
       if (isMe) this.activeBubble = null;
@@ -369,6 +383,7 @@ class MainScene extends Phaser.Scene {
       }
     });
 
+    // 자신 or 타 플레이어 말풍선 저장
     if (isMe) this.activeBubble = bubble;
     else if (nickname && this.otherPlayers.get(nickname)) {
       this.otherPlayers.get(nickname).chatBubble = bubble;
@@ -377,9 +392,9 @@ class MainScene extends Phaser.Scene {
 
   createPortals(roomId) {
     const portalConfig = {
-      1: [{ x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }, { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 4 } }],
-      2: [{ x: 100, y: 450, target: { scene: 'BridgeScene', roomId: 6 } }, { x: 1500, y: 450, target: { scene: 'BridgeScene', roomId: 5 } }],
-      3: [{ x: 100, y: 530, target: { scene: 'BridgeScene', roomId: 4 } }, { x: 1500, y: 530, target: { scene: 'BridgeScene', roomId: 6 } }]
+      4: [{ x: 100, y: 670, target: { scene: 'MainScene', roomId: 1 } }, { x: 1500, y: 670, target: { scene: 'MainScene', roomId: 3 } }],
+      5: [{ x: 100, y: 640, target: { scene: 'MainScene', roomId: 2 } }, { x: 1500, y: 640, target: { scene: 'MainScene', roomId: 1 } }],
+      6: [{ x: 100, y: 640, target: { scene: 'MainScene', roomId: 3 } }, { x: 1500, y: 640, target: { scene: 'MainScene', roomId: 2 } }]
     };
     if (!portalConfig[roomId]) return;
 
@@ -455,19 +470,19 @@ class MainScene extends Phaser.Scene {
   }
 
   shutdown() {
-    console.log(`MainScene shutdown: Cleaning up...`);
+    console.log(`BridgeScene shutdown: Cleaning up...`);
     this.input.keyboard.off('keydown', this.handleKeyDown, this);
     this.input.keyboard.off('keyup', this.handleKeyUp, this);
     if (this.customizationSub) this.customizationSub.unsubscribe();
     if (this.positionsSub) this.positionsSub.unsubscribe();
     if (this.chatSub) this.chatSub.unsubscribe();
     if (this.moveInterval) clearInterval(this.moveInterval);
-    // if (this.bgm) {
-    //   this.bgm.stop();
-    //   this.bgm.destroy();
-    //   this.bgm = null;
-    // }
+    if (this.bgm) {
+      this.bgm.stop();
+      this.bgm.destroy();
+      this.bgm = null;
+    }
   }
 }
 
-export default MainScene;
+export default BridgeScene;
