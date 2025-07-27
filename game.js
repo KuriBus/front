@@ -1,5 +1,7 @@
 import StartScene from './StartScene.js';
-import NicknameScene from './NicknameScene.js';
+//import NicknameScene from './NicknameScene.js';
+import LoginScene from './LoginScene.js';         
+import RegisterScene from './RegisterScene.js';     
 import CharacterSelectScene from './CharacterSelectScene.js';
 import WorldMapScene from './WorldMapScene.js';
 import MainScene from './mainScene.js';
@@ -21,7 +23,9 @@ const config = {
   },
   scene: [
     StartScene,
-    NicknameScene,
+    //NicknameScene,
+    LoginScene,      
+    RegisterScene,  
     CharacterSelectScene,
     WorldMapScene,
     MainScene,
@@ -31,10 +35,11 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-const socket = new SockJS(WS_URL); 
+// const socket = new SockJS(WS_URL); 
 
 const stompClient = new Client({
-  webSocketFactory: () => socket,
+  // webSocketFactory: () => socket,
+  brokerURL: "wss://kuriverse.shop/ws",
   reconnectDelay: 5000,
   debug: (str) => console.log('[STOMP]', str)
 });
@@ -49,4 +54,5 @@ stompClient.onStompError = (frame) => {
 
 stompClient.activate();
 
-export { stompClient, socket };
+// export { stompClient, socket };
+export { stompClient};
