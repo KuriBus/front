@@ -1,6 +1,6 @@
 import { stompClient } from './game.js';
 
-const SERVER_URL = 'https://kuriverse.com';
+const SERVER_URL = 'https://kuriverse.shop';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -182,6 +182,21 @@ class MainScene extends Phaser.Scene {
         });
       }
     });
+
+    if (this.sys.game.device.input.touch) {
+      this.createMobileControls();
+    }
+
+
+    console.log('Device touch 지원:', this.sys.game.device.input.touch);
+
+    if (this.sys.game.device.input.touch) {
+        console.log('모바일 방향키 생성!');
+        this.createMobileControls();
+    } else {
+        console.log('터치 미지원, 방향키 생성 안함');
+    }
+
   }
 
   async joinRoom(roomId, nickname) {
@@ -418,6 +433,49 @@ class MainScene extends Phaser.Scene {
       });
       this.activePortal = null;
     }
+  }
+
+  createMobileControls() {
+    const btnSize = 80;
+    const bottomY = this.sys.game.config.height - btnSize - 128; 
+    const rightX = this.sys.game.config.width - btnSize*1.4;    
+
+    const directions = [
+      { x: rightX - btnSize, y: bottomY, text: '↑', key: 'w' },
+      { x: rightX - btnSize, y: bottomY + btnSize, text: '↓', key: 's' },
+      { x: rightX - btnSize * 2, y: bottomY + btnSize, text: '←', key: 'a' },
+      { x: rightX, y: bottomY + btnSize, text: '→', key: 'd' }
+    ];
+
+    directions.forEach(dir => {
+      const btn = this.add.rectangle(dir.x, dir.y, btnSize, btnSize, 0xB593CC, 0.7)
+        .setOrigin(0)
+        .setInteractive()
+        .setDepth(20);
+
+      const txt = this.add.text(
+        dir.x + btnSize / 2, dir.y + btnSize / 2,
+        dir.text, { font: 'bold 40px Pretendard', color: '#fff' }
+      ).setOrigin(0.5).setDepth(21);
+
+      btn.on('pointerdown', () => {
+        this.handleKeyDown({ key: dir.key });
+        this.currentDirection = dir.key;
+        btn.setFillStyle(0x9674ba, 0.9);
+      });
+      btn.on('pointerup', () => {
+        this.handleKeyUp({ key: dir.key });
+        this.currentDirection = null;
+        btn.setFillStyle(0xB593CC, 0.7);
+      });
+      btn.on('pointerout', () => {
+        if (this.currentDirection) {
+          this.handleKeyUp({ key: dir.key });
+          this.currentDirection = null;
+          btn.setFillStyle(0xB593CC, 0.7);
+        }
+      });
+    });
   }
 
   handleKeyDown(event) {

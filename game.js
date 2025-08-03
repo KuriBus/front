@@ -1,5 +1,4 @@
 import StartScene from './StartScene.js';
-//import NicknameScene from './NicknameScene.js';
 import LoginScene from './LoginScene.js';         
 import RegisterScene from './RegisterScene.js';     
 import CharacterSelectScene from './CharacterSelectScene.js';
@@ -23,7 +22,6 @@ const config = {
   },
   scene: [
     StartScene,
-    //NicknameScene,
     LoginScene,      
     RegisterScene,  
     CharacterSelectScene,
