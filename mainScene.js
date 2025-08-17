@@ -66,15 +66,14 @@ class MainScene extends Phaser.Scene {
     this.bgm = this.sound.add(bgmKey, { loop: true, volume: 0.5 });
     this.bgm.play();
 
-
     this.add.image(800, 450, this.bgKeyToUse).setDisplaySize(1600, 900).setDepth(0);
     const titleText = this.currentRoomName || '알 수 없는 곳';
     this.add.rectangle(800, 50, 300, 60, 0xB593CC).setDepth(5).setStrokeStyle(2, 0xffffff);
     this.add.text(800, 50, titleText, { fontSize: '32px', fontFamily: 'Pretendard', color: '#ffffff' }).setOrigin(0.5).setDepth(6);
-    this.add.rectangle(300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
 
-    // 채팅 로그 DOM
-    this.chatLogContainer = this.add.dom(300, 730).createFromHTML(`
+    this.add.rectangle(1300, 750, 580, 200, 0x000000, 0.4).setDepth(2);
+
+    this.chatLogContainer = this.add.dom(1300, 730).createFromHTML(`
       <div style="position: relative;">
         <style>
           #chat-log-box::-webkit-scrollbar { width: 6px; }
@@ -85,15 +84,13 @@ class MainScene extends Phaser.Scene {
       </div>
     `).setOrigin(0.5).setDepth(6);
 
-    // 채팅 입력창 DOM
-    this.chatInput = this.add.dom(300, 850).createFromHTML(`
+    this.chatInput = this.add.dom(1300, 850).createFromHTML(`
       <div style="width: 534px; height: 58px; background: #fff; border: 3px solid #B593CC; border-radius: 12px; display: flex; align-items: center; padding: 0 25px; gap: 13px;">
         <input id="chat-message" type="text" placeholder="메시지를 입력하세요" style="flex: 1; border: none; outline: none; font-size: 16px;" />
         <button id="send-btn" style="width: 68px; height: 58px; background: #B593CC; border-radius: 12px; border: none; color: #fff; font-weight: bold;">→</button>
       </div>
     `).setOrigin(0.5).setDepth(10);
 
-    // 채팅 로그 추가 함수
     this.addChatLog = (text) => {
       const chatBox = this.chatLogContainer.getChildByID('chat-log-box');
       if (chatBox) {
@@ -105,11 +102,9 @@ class MainScene extends Phaser.Scene {
       }
     };
 
-    // 채팅 입력 이벤트 처리
     this.time.delayedCall(100, () => {
       const chatInputField = this.chatInput.getChildByID('chat-message');
       const sendBtn = this.chatInput.getChildByID('send-btn');
-      // 채팅 전송 함수
       const sendMessage = () => {
         const message = chatInputField.value.trim();
         if (message && this.isStompConnected()) {
@@ -126,17 +121,13 @@ class MainScene extends Phaser.Scene {
           this.addChatLog('[시스템] 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.');
         }
       };
-      // 엔터키 전송
       chatInputField.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
           sendMessage();
         }
       });
-      // 버튼 클릭 전송
       sendBtn.addEventListener('click', sendMessage);
-
-      // 입력창 포커스/블러에 따라 게임 키 입력 활성/비활성
       chatInputField.addEventListener('focus', () => this.input.keyboard.enabled = false);
       chatInputField.addEventListener('blur', () => this.input.keyboard.enabled = true);
     });
@@ -145,7 +136,6 @@ class MainScene extends Phaser.Scene {
     this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4).setOrigin(0.5).setDepth(5);
     this.nicknameText = this.add.text(this.player.x, this.player.y + 78, this.nickname, { font: '14px Pretendard', fill: '#ffffff' }).setOrigin(0.5).setDepth(6);
 
-    // 포털 이동키
     this.eKey = this.input.keyboard.addKey('E');
     this.createPortals(this.roomId);
 
@@ -158,22 +148,18 @@ class MainScene extends Phaser.Scene {
 
     this.initWebSocket(this.roomId, this.nickname);
 
-    // NPC 자동 생성 타이머
     this.time.addEvent({
-      delay: 3000, // 3초마다 한 명씩 생성
+      delay: 3000,
       loop: true,
       callback: () => {
         const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
         const key = Phaser.Utils.Array.GetRandom(characterList);
-
         const fromLeft = Math.random() < 0.5;
         const startX = fromLeft ? -50 : 1650;
         const endX = fromLeft ? 1650 : -50;
         const y = Phaser.Math.Between(300, 700);
-
         const npc = this.add.sprite(startX, y, key).setDisplaySize(100, 120).setDepth(1);
-        npc.setFlipX(!fromLeft); // 오른쪽 이동 시 반전
-
+        npc.setFlipX(!fromLeft);
         this.tweens.add({
           targets: npc,
           x: endX,
@@ -186,17 +172,84 @@ class MainScene extends Phaser.Scene {
     if (this.sys.game.device.input.touch) {
       this.createMobileControls();
     }
+  }
 
+  createMobileControls() {
+    const btnSize = 64;
+    const baseX = 120;
+    const baseY = this.sys.game.config.height - btnSize * 3 - 40;
+    const midX = baseX + btnSize;
+    const midY = baseY + btnSize;
+    this.add.rectangle(
+      midX, midY,
+      btnSize, btnSize,
+      0xB593CC, 0.65 // 연보라, 투명도 0.65
+    ).setOrigin(0.5).setDepth(20);
 
-    console.log('Device touch 지원:', this.sys.game.device.input.touch);
+    const keys = [
+      { x: midX, y: midY - btnSize, key: 'w', text: '↑' }, // 위
+      { x: midX, y: midY + btnSize, key: 's', text: '↓' }, // 아래
+      { x: midX - btnSize, y: midY, key: 'a', text: '←' }, // 왼쪽
+      { x: midX + btnSize, y: midY, key: 'd', text: '→' }  // 오른쪽
+    ];
 
-    if (this.sys.game.device.input.touch) {
-        console.log('모바일 방향키 생성!');
-        this.createMobileControls();
-    } else {
-        console.log('터치 미지원, 방향키 생성 안함');
-    }
+    keys.forEach(dir => {
+      const btn = this.add.rectangle(
+        dir.x, dir.y, btnSize, btnSize,
+        0xB593CC, 0.65
+      ).setOrigin(0.5).setInteractive().setDepth(21);
 
+      this.add.text(
+        dir.x, dir.y, dir.text,
+        { font: 'bold 34px Pretendard', color: '#fff' }
+      ).setOrigin(0.5).setDepth(22);
+
+      btn.on('pointerdown', () => {
+        this.handleKeyDown({ key: dir.key });
+        this.currentDirection = dir.key;
+        btn.setFillStyle(0x9674ba, 0.85);
+      });
+      btn.on('pointerup', () => {
+        this.handleKeyUp({ key: dir.key });
+        this.currentDirection = null;
+        btn.setFillStyle(0xB593CC, 0.65);
+      });
+      btn.on('pointerout', () => {
+        if (this.currentDirection) {
+          this.handleKeyUp({ key: dir.key });
+          this.currentDirection = null;
+          btn.setFillStyle(0xB593CC, 0.65);
+        }
+      });
+    });
+
+    const eBtnRadius = btnSize * 0.65;
+    const diagDist = btnSize * 1.3;
+    const eBtnX = midX + diagDist;
+    const eBtnY = midY - diagDist;
+
+    const eBtn = this.add.circle(
+      eBtnX, eBtnY, eBtnRadius,
+      0xB593CC, 0.65 // 반투명
+    ).setOrigin(0.5).setInteractive().setDepth(21);
+
+    this.add.text(
+      eBtnX, eBtnY, 'E',
+      { font: 'bold 30px Pretendard', color: '#fff' }
+    ).setOrigin(0.5).setDepth(22);
+
+    eBtn.on('pointerdown', () => {
+      this.eKey.isDown = true;
+      eBtn.setFillStyle(0x9674ba, 0.85);
+    });
+    eBtn.on('pointerup', () => {
+      this.eKey.isDown = false;
+      eBtn.setFillStyle(0xB593CC, 0.65);
+    });
+    eBtn.on('pointerout', () => {
+      this.eKey.isDown = false;
+      eBtn.setFillStyle(0xB593CC, 0.65);
+    });
   }
 
   async joinRoom(roomId, nickname) {
@@ -206,7 +259,6 @@ class MainScene extends Phaser.Scene {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname })
       });
-      console.log('방 입장 성공');
     } catch (e) {
       console.error('방 입장 오류:', e);
     }
@@ -219,7 +271,6 @@ class MainScene extends Phaser.Scene {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname })
       });
-      console.log("방 퇴장 완료");
     } catch (error) {
       console.error("퇴장 오류:", error);
     }
@@ -278,7 +329,6 @@ class MainScene extends Phaser.Scene {
       if (myData && this.player) {
         const SCALE = 16;
         this.player.setPosition(myData.x * SCALE, myData.y * SCALE);
-        //this.player.setPosition(myData.x, myData.y);
       }
       usersInSameRoom.forEach(pos => {
         if (pos.nickname === this.nickname) return;
@@ -309,7 +359,6 @@ class MainScene extends Phaser.Scene {
       });
     });
 
-    // 채팅 메시지 구독
     this.chatSub = stompClient.subscribe(`/topic/room/${this.roomId}`, (msg) => {
       let chat;
       try {
@@ -435,49 +484,6 @@ class MainScene extends Phaser.Scene {
     }
   }
 
-  createMobileControls() {
-    const btnSize = 80;
-    const bottomY = this.sys.game.config.height - btnSize - 128; 
-    const rightX = this.sys.game.config.width - btnSize*1.4;    
-
-    const directions = [
-      { x: rightX - btnSize, y: bottomY, text: '↑', key: 'w' },
-      { x: rightX - btnSize, y: bottomY + btnSize, text: '↓', key: 's' },
-      { x: rightX - btnSize * 2, y: bottomY + btnSize, text: '←', key: 'a' },
-      { x: rightX, y: bottomY + btnSize, text: '→', key: 'd' }
-    ];
-
-    directions.forEach(dir => {
-      const btn = this.add.rectangle(dir.x, dir.y, btnSize, btnSize, 0xB593CC, 0.7)
-        .setOrigin(0)
-        .setInteractive()
-        .setDepth(20);
-
-      const txt = this.add.text(
-        dir.x + btnSize / 2, dir.y + btnSize / 2,
-        dir.text, { font: 'bold 40px Pretendard', color: '#fff' }
-      ).setOrigin(0.5).setDepth(21);
-
-      btn.on('pointerdown', () => {
-        this.handleKeyDown({ key: dir.key });
-        this.currentDirection = dir.key;
-        btn.setFillStyle(0x9674ba, 0.9);
-      });
-      btn.on('pointerup', () => {
-        this.handleKeyUp({ key: dir.key });
-        this.currentDirection = null;
-        btn.setFillStyle(0xB593CC, 0.7);
-      });
-      btn.on('pointerout', () => {
-        if (this.currentDirection) {
-          this.handleKeyUp({ key: dir.key });
-          this.currentDirection = null;
-          btn.setFillStyle(0xB593CC, 0.7);
-        }
-      });
-    });
-  }
-
   handleKeyDown(event) {
     if (!this.input.keyboard.enabled) return;
     const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
@@ -512,11 +518,6 @@ class MainScene extends Phaser.Scene {
     if (this.positionsSub) this.positionsSub.unsubscribe();
     if (this.chatSub) this.chatSub.unsubscribe();
     if (this.moveInterval) clearInterval(this.moveInterval);
-    // if (this.bgm) {
-    //   this.bgm.stop();
-    //   this.bgm.destroy();
-    //   this.bgm = null;
-    // }
   }
 }
 
