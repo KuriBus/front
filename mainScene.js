@@ -105,6 +105,7 @@ class MainScene extends Phaser.Scene {
     this.time.delayedCall(100, () => {
       const chatInputField = this.chatInput.getChildByID('chat-message');
       const sendBtn = this.chatInput.getChildByID('send-btn');
+
       const sendMessage = () => {
         const message = chatInputField.value.trim();
         if (message && this.isStompConnected()) {
@@ -117,20 +118,35 @@ class MainScene extends Phaser.Scene {
             })
           });
           chatInputField.value = '';
+          chatInputField.blur();
+          this.input.keyboard.enabled = true;
         } else if (!this.isStompConnected()) {
           this.addChatLog('[시스템] 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.');
         }
       };
+
       chatInputField.addEventListener('keydown', (event) => {
+        // 이벤트가 Phaser로 전파되는 걸 막아 입력란에 정상 입력되도록 함
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
         if (event.key === 'Enter') {
           event.preventDefault();
           sendMessage();
         }
+      }, true);
+
+      chatInputField.addEventListener('focus', () => {
+        this.input.keyboard.enabled = false;
       });
+
+      chatInputField.addEventListener('blur', () => {
+        this.input.keyboard.enabled = true;
+      });
+
       sendBtn.addEventListener('click', sendMessage);
-      chatInputField.addEventListener('focus', () => this.input.keyboard.enabled = false);
-      chatInputField.addEventListener('blur', () => this.input.keyboard.enabled = true);
     });
+
 
     this.player = this.physics.add.sprite(800, 650, this.character).setDisplaySize(100, 120).setCollideWorldBounds(true).setOrigin(0.5);
     this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4).setOrigin(0.5).setDepth(5);
@@ -183,14 +199,14 @@ class MainScene extends Phaser.Scene {
     this.add.rectangle(
       midX, midY,
       btnSize, btnSize,
-      0xB593CC, 0.65 // 연보라, 투명도 0.65
+      0xB593CC, 0.65
     ).setOrigin(0.5).setDepth(20);
 
     const keys = [
-      { x: midX, y: midY - btnSize, key: 'w', text: '↑' }, // 위
-      { x: midX, y: midY + btnSize, key: 's', text: '↓' }, // 아래
-      { x: midX - btnSize, y: midY, key: 'a', text: '←' }, // 왼쪽
-      { x: midX + btnSize, y: midY, key: 'd', text: '→' }  // 오른쪽
+      { x: midX, y: midY - btnSize, key: 'w', text: '↑' },
+      { x: midX, y: midY + btnSize, key: 's', text: '↓' },
+      { x: midX - btnSize, y: midY, key: 'a', text: '←' },
+      { x: midX + btnSize, y: midY, key: 'd', text: '→' }
     ];
 
     keys.forEach(dir => {
@@ -230,7 +246,7 @@ class MainScene extends Phaser.Scene {
 
     const eBtn = this.add.circle(
       eBtnX, eBtnY, eBtnRadius,
-      0xB593CC, 0.65 // 반투명
+      0xB593CC, 0.65
     ).setOrigin(0.5).setInteractive().setDepth(21);
 
     this.add.text(
@@ -412,8 +428,8 @@ class MainScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const bubble = this.add.container(
-      targetSprite.x - bubbleWidth / 2, 
-      targetSprite.y - 150, 
+      targetSprite.x - bubbleWidth / 2,
+      targetSprite.y - 150,
       [bubbleRect, tail, msgText]
     ).setDepth(6);
 
@@ -485,9 +501,13 @@ class MainScene extends Phaser.Scene {
   }
 
   handleKeyDown(event) {
-    if (!this.input.keyboard.enabled) return;
+    // 입력란 포커스시 키 처리 무시
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+
     const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
     const dir = keyMap[event.key] || (['w', 'a', 's', 'd'].includes(event.key.toLowerCase()) ? event.key.toLowerCase() : null);
+
     if (dir && dir !== this.currentDirection) {
       this.currentDirection = dir;
       if (this.moveInterval) clearInterval(this.moveInterval);
@@ -500,7 +520,9 @@ class MainScene extends Phaser.Scene {
   }
 
   handleKeyUp(event) {
-    if (!this.input.keyboard.enabled) return;
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+
     const dirKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
     if (dirKeys.includes(event.key)) {
       if (this.moveInterval) clearInterval(this.moveInterval);
