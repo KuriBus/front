@@ -1,4 +1,6 @@
 import { stompClient } from './game.js';
+import { fetchCharacterCoordinates, updateCharacterCoordinates } from './api.js';
+import { getToken } from './api.js';
 
 const SERVER_URL = 'https://kuriverse.shop';
 
@@ -269,46 +271,48 @@ class MainScene extends Phaser.Scene {
   }
 
   async joinRoom(roomId, nickname) {
-    try {
-      await fetch(`${SERVER_URL}/api/rooms/${roomId}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname })
-      });
-    } catch (e) {
-      console.error('방 입장 오류:', e);
-    }
+    await fetch(`${SERVER_URL}/api/rooms/${roomId}/join`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`, // 토큰 필수!
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ nickname })
+    });
   }
 
   async leaveRoom(roomId, nickname) {
-    try {
-      await fetch(`${SERVER_URL}/api/rooms/${roomId}/leave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname })
-      });
-    } catch (error) {
-      console.error("퇴장 오류:", error);
-    }
+    await fetch(`${SERVER_URL}/api/rooms/${roomId}/leave`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`, // 토큰 필수!
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ nickname })
+    });
   }
 
   async getAllCustomizations() {
-    try {
-      const response = await fetch(`${SERVER_URL}/api/customization/all`);
-      if (!response.ok) {
-        throw new Error(`전체 외형 정보 로딩 실패: ${response.status}`);
+    const response = await fetch(`${SERVER_URL}/api/customization/all`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json'
       }
-      const allCustoms = await response.json();
-      allCustoms.forEach(custom => {
-        const bodytype = custom.bodytype || custom.bodyType;
-        this.bodytypeMap.set(custom.nickname, bodytype);
+    });
+    if (response.ok) {
+      const data = await response.json();
+      data.forEach(item => {
+        const type = item.bodytype || item.bodyType;
+        this.bodytypeMap.set(item.nickname, type);
       });
-    } catch (e) {
-      console.error('전체 외형 정보 로딩 중 오류:', e);
+    } else {
+      console.error("커스터마이징 조회 실패:", response.status);
     }
-  }
+}
 
   async initWebSocket(roomId, nickname) {
+    // 방 입장 전 먼저 안전하게 퇴장 시도
+    await this.leaveRoom(roomId, nickname);
     await this.joinRoom(roomId, nickname);
     await this.getAllCustomizations();
 
@@ -465,6 +469,7 @@ class MainScene extends Phaser.Scene {
 
   update() {
     if (!this.player) return;
+    console.log('Player position:', this.player.x, this.player.y);
 
     this.activePortal = null;
     this.physics.world.overlap(this.player, this.portals, (player, portal) => {
@@ -501,25 +506,45 @@ class MainScene extends Phaser.Scene {
   }
 
   handleKeyDown(event) {
-    // 입력란 포커스시 키 처리 무시
-    const active = document.activeElement;
+    console.log('KeyDown:', event.key);
+    const active = document.activeElement;  
     if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
 
     const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
     const dir = keyMap[event.key] || (['w', 'a', 's', 'd'].includes(event.key.toLowerCase()) ? event.key.toLowerCase() : null);
 
     if (dir && dir !== this.currentDirection) {
-      this.currentDirection = dir;
-      if (this.moveInterval) clearInterval(this.moveInterval);
-      const payload = { nickname: this.nickname, direction: dir, roomId: this.roomId };
-      stompClient.publish({ destination: "/app/move", body: JSON.stringify(payload) });
-      this.moveInterval = setInterval(() => {
-        stompClient.publish({ destination: "/app/move", body: JSON.stringify(payload) });
-      }, 100);
+        this.currentDirection = dir;
+        if (this.moveInterval) clearInterval(this.moveInterval);
+
+        // 클라이언트 즉시 위치 업데이트 (예: 속도 4픽셀)
+        const speed = 4;
+        if (this.player) {
+            switch(dir){
+                case 'w': this.player.y -= speed; break;
+                case 's': this.player.y += speed; break;
+                case 'a': this.player.x -= speed; break;
+                case 'd': this.player.x += speed; break;
+            }
+        }
+
+        if (this.isStompConnected()) {
+            const payload = { nickname: this.nickname, direction: dir, roomId: this.roomId };
+            console.log(`Sending move: ${payload.direction} for ${payload.nickname}`);
+            stompClient.publish({ destination: '/app/move', body: JSON.stringify(payload) });
+            this.moveInterval = setInterval(() => {
+                if (this.isStompConnected()) {
+                    stompClient.publish({ destination: '/app/move', body: JSON.stringify(payload) });
+                }
+            }, 100);
+        } else {
+            // this.addChatLog('[시스템] 서버와 연결이 끊겨, 이동 신호를 보낼 수 없습니다.');
+        }
     }
   }
 
-  handleKeyUp(event) {
+  async handleKeyUp(event) {
+    console.log('KeyUp:', event.key);
     const active = document.activeElement;
     if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
 
@@ -528,12 +553,27 @@ class MainScene extends Phaser.Scene {
       if (this.moveInterval) clearInterval(this.moveInterval);
       this.moveInterval = null;
       this.currentDirection = null;
-      stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname: this.nickname, direction: "stop", roomId: this.roomId }) });
+
+      if (this.isStompConnected()) {
+        stompClient.publish({ destination: '/app/move', body: JSON.stringify({ nickname: this.nickname, direction: 'stop', roomId: this.roomId }) });
+      } else {
+        this.addChatLog('[시스템] 서버와 연결이 끊겼습니다.');
+      }
+
+      // 좌표 갱신은 REST API니까 그대로 유지
+      if (this.player) {
+        try {
+          console.log(`Updating coords: (${this.player.x}, ${this.player.y}) in ${this.currentRoomName}`);
+          await updateCharacterCoordinates(this.nickname, this.currentRoomName, this.player.x, this.player.y);
+        } catch (err) {
+          console.error('좌표 갱신 실패:', err);
+        }
+      }
     }
   }
 
   shutdown() {
-    console.log(`MainScene shutdown: Cleaning up...`);
+    console.log('MainScene shutdown: Cleaning up...');
     this.input.keyboard.off('keydown', this.handleKeyDown, this);
     this.input.keyboard.off('keyup', this.handleKeyUp, this);
     if (this.customizationSub) this.customizationSub.unsubscribe();
