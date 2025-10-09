@@ -17,6 +17,7 @@ class MainScene extends Phaser.Scene {
     this.customizationSub = null;
     this.positionsSub = null;
     this.chatSub = null;
+    this.pressedKeys = new Set(); 
   }
 
   init(data) {
@@ -104,6 +105,8 @@ class MainScene extends Phaser.Scene {
       }
     };
 
+    this.fetchPreviousChats(this.roomId);
+
     this.time.delayedCall(100, () => {
       const chatInputField = this.chatInput.getChildByID('chat-message');
       const sendBtn = this.chatInput.getChildByID('send-btn');
@@ -123,7 +126,7 @@ class MainScene extends Phaser.Scene {
           chatInputField.blur();
           this.input.keyboard.enabled = true;
         } else if (!this.isStompConnected()) {
-          this.addChatLog('[시스템] 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.');
+          //this.addChatLog('[시스템] 연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.');
         }
       };
 
@@ -512,34 +515,33 @@ class MainScene extends Phaser.Scene {
 
     const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
     const dir = keyMap[event.key] || (['w', 'a', 's', 'd'].includes(event.key.toLowerCase()) ? event.key.toLowerCase() : null);
+    // if (dir && !this.moveInterval) {
+    //   this.currentDirection = dir;
+    //   const speed = 4;
+    //   const moveFunc = () => {
+    //     if (this.player) {
+    //       switch (dir) {
+    //         case 'w': this.player.y -= speed; break;
+    //         case 's': this.player.y += speed; break;
+    //         case 'a': this.player.x -= speed; break;
+    //         case 'd': this.player.x += speed; break;
+    //       }
+    //     }
+    //     if (this.isStompConnected()) {
+    //       stompClient.publish({ destination: '/app/move', body: JSON.stringify({ nickname: this.nickname, direction: dir, roomId: this.roomId }) });
+    //     }
+    //   };
+    //   moveFunc(); 
+    //   this.moveInterval = setInterval(moveFunc, 80); 
+    // }
+    if (dir) {
+      this.pressedKeys.add(dir);
 
-    if (dir && dir !== this.currentDirection) {
-        this.currentDirection = dir;
-        if (this.moveInterval) clearInterval(this.moveInterval);
-
-        // 클라이언트 즉시 위치 업데이트 (예: 속도 4픽셀)
-        const speed = 4;
-        if (this.player) {
-            switch(dir){
-                case 'w': this.player.y -= speed; break;
-                case 's': this.player.y += speed; break;
-                case 'a': this.player.x -= speed; break;
-                case 'd': this.player.x += speed; break;
-            }
-        }
-
-        if (this.isStompConnected()) {
-            const payload = { nickname: this.nickname, direction: dir, roomId: this.roomId };
-            console.log(`Sending move: ${payload.direction} for ${payload.nickname}`);
-            stompClient.publish({ destination: '/app/move', body: JSON.stringify(payload) });
-            this.moveInterval = setInterval(() => {
-                if (this.isStompConnected()) {
-                    stompClient.publish({ destination: '/app/move', body: JSON.stringify(payload) });
-                }
-            }, 100);
-        } else {
-            // this.addChatLog('[시스템] 서버와 연결이 끊겨, 이동 신호를 보낼 수 없습니다.');
-        }
+      if (!this.moveInterval) {
+        this.moveInterval = setInterval(() => {
+          this.moveCharacterByPressedKeys();
+        }, 80); // 이동 딜레이, 필요 시 조정
+      } 
     }
   }
 
@@ -548,29 +550,90 @@ class MainScene extends Phaser.Scene {
     const active = document.activeElement;
     if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
 
-    const dirKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-    if (dirKeys.includes(event.key)) {
-      if (this.moveInterval) clearInterval(this.moveInterval);
-      this.moveInterval = null;
-      this.currentDirection = null;
+    // const dirKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    // if (dirKeys.includes(event.key)) {
+    //   if (this.moveInterval) {
+    //     clearInterval(this.moveInterval);
+    //     this.moveInterval = null;
+    //   }
+    //   this.currentDirection = null;
 
-      if (this.isStompConnected()) {
-        stompClient.publish({ destination: '/app/move', body: JSON.stringify({ nickname: this.nickname, direction: 'stop', roomId: this.roomId }) });
-      } else {
-        this.addChatLog('[시스템] 서버와 연결이 끊겼습니다.');
-      }
+    //   if (this.isStompConnected()) {
+    //     stompClient.publish({ destination: '/app/move', body: JSON.stringify({ nickname: this.nickname, direction: 'stop', roomId: this.roomId }) });
+    //   }
 
-      // 좌표 갱신은 REST API니까 그대로 유지
-      if (this.player) {
-        try {
-          console.log(`Updating coords: (${this.player.x}, ${this.player.y}) in ${this.currentRoomName}`);
-          await updateCharacterCoordinates(this.nickname, this.currentRoomName, this.player.x, this.player.y);
-        } catch (err) {
-          console.error('좌표 갱신 실패:', err);
+    //   if (this.player) {
+    //     try {
+    //       await updateCharacterCoordinates(this.nickname, this.currentRoomName, this.player.x, this.player.y);
+    //     } catch (err) {}
+    //   }
+    // }
+    const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
+    const dir = keyMap[event.key] || (['w', 'a', 's', 'd'].includes(event.key.toLowerCase()) ? event.key.toLowerCase() : null);
+
+    if (dir) {
+      this.pressedKeys.delete(dir);
+      if (this.pressedKeys.size === 0 && this.moveInterval) {
+        clearInterval(this.moveInterval);
+        this.moveInterval = null;
+        if (this.isStompConnected()) {
+          stompClient.publish({
+            destination: '/app/move',
+            body: JSON.stringify({ nickname: this.nickname, direction: 'stop', roomId: this.roomId })
+          });
+        }
+        if (this.player) {
+          try {
+            await updateCharacterCoordinates(this.nickname, this.currentRoomName, this.player.x, this.player.y);
+          } catch (err) {}
         }
       }
     }
   }
+
+  async fetchPreviousChats(roomId) {
+    const response = await fetch(`${SERVER_URL}/api/rooms/${roomId}/chats`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${getToken()}`,
+        "Content-Type": "application/json"
+      }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      data.reverse().forEach(msg => {
+        this.addChatLog(`[${msg.nickname}] ${msg.content}`);
+      });
+  } 
+  }
+
+  moveCharacterByPressedKeys() {
+    const speed = 4;
+    let dx = 0, dy = 0;
+    if (this.pressedKeys.has('w')) dy -= speed;
+    if (this.pressedKeys.has('s')) dy += speed;
+    if (this.pressedKeys.has('a')) dx -= speed;
+    if (this.pressedKeys.has('d')) dx += speed;
+
+    if (this.player && (dx !== 0 || dy !== 0)) {
+      this.player.x += dx;
+      this.player.y += dy;
+
+      let dirStr = '';
+      if (dy < 0) dirStr += 'w';
+      else if (dy > 0) dirStr += 's';
+      if (dx < 0) dirStr += 'a';
+      else if (dx > 0) dirStr += 'd';
+
+      if (this.isStompConnected()) {
+        stompClient.publish({
+          destination: '/app/move',
+          body: JSON.stringify({ nickname: this.nickname, direction: dirStr || 'w', roomId: this.roomId })
+        });
+      }
+    }
+  }
+
 
   shutdown() {
     console.log('MainScene shutdown: Cleaning up...');

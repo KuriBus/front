@@ -1,6 +1,7 @@
 import { stompClient } from './game.js';
+import { getToken } from './api.js';
 
-const SERVER_URL = 'https://kuriverse.com';
+const SERVER_URL = 'https://kuriverse.shop';
 
 class BridgeScene extends Phaser.Scene {
   constructor() {
@@ -21,6 +22,7 @@ class BridgeScene extends Phaser.Scene {
     this.nicknameText = null;
     this.nicknameBg = null;
     this.portals = null;
+    this.pressedKeys = new Set();
   }
 
   init(data) {
@@ -106,7 +108,6 @@ class BridgeScene extends Phaser.Scene {
           this.chatInputField.blur();
         }
       };
-
       this.chatInputField.addEventListener('focus', () => this.input.keyboard.enabled = false);
       this.chatInputField.addEventListener('blur', () => this.input.keyboard.enabled = true);
       this.chatInputField.addEventListener('keydown', (event) => {
@@ -118,7 +119,6 @@ class BridgeScene extends Phaser.Scene {
     this.spawnPlayer(this.character, this.nickname);
 
     this.eKey = this.input.keyboard.addKey('E');
-
     this.createPortals(this.roomId);
 
     window.addEventListener('beforeunload', () => {
@@ -136,18 +136,14 @@ class BridgeScene extends Phaser.Scene {
       callback: () => {
         const characterList = ['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
         const key = Phaser.Utils.Array.GetRandom(characterList);
-
         const fromLeft = Math.random() < 0.5;
         const startX = fromLeft ? -50 : 1650;
         const endX = fromLeft ? 1650 : -50;
-
         const y = Phaser.Math.Between(600, 880);
-
         const npc = this.add.sprite(startX, y, key)
           .setDisplaySize(100, 120)
           .setDepth(1);
         npc.setFlipX(!fromLeft);
-
         this.tweens.add({
           targets: npc,
           x: endX,
@@ -158,11 +154,30 @@ class BridgeScene extends Phaser.Scene {
     });
   }
 
+  spawnPlayer(character, nickname) {
+    this.player = this.physics.add.sprite(800, 650, character)
+      .setDisplaySize(100, 120)
+      .setCollideWorldBounds(true)
+      .setOrigin(0.5);
+    this.nicknameBg = this.add.rectangle(this.player.x, this.player.y + 78, 100, 22, 0x000000, 0.4)
+      .setOrigin(0.5)
+      .setDepth(5);
+    this.nicknameText = this.add.text(this.player.x, this.player.y + 78, nickname, {
+      font: '14px Pretendard',
+      fill: '#ffffff'
+    })
+      .setOrigin(0.5)
+      .setDepth(6);
+  }
+
   async joinRoom(roomId, nickname) {
     try {
       await fetch(`${SERVER_URL}/api/rooms/${roomId}/join`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ nickname })
       });
       console.log('방 입장 성공');
@@ -175,7 +190,10 @@ class BridgeScene extends Phaser.Scene {
     try {
       await fetch(`${SERVER_URL}/api/rooms/${roomId}/leave`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ nickname })
       });
       console.log("방 퇴장 완료");
@@ -186,7 +204,12 @@ class BridgeScene extends Phaser.Scene {
 
   async getAllCustomizations() {
     try {
-      const response = await fetch(`${SERVER_URL}/api/customization/all`);
+      const response = await fetch(`${SERVER_URL}/api/customization/all`, {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (!response.ok) {
         throw new Error(`전체 외형 정보 로딩 실패: ${response.status}`);
       }
@@ -203,7 +226,6 @@ class BridgeScene extends Phaser.Scene {
   async initWebSocket(roomId, nickname) {
     await this.joinRoom(roomId, nickname);
     await this.getAllCustomizations();
-
     if (stompClient.active) {
       this.setupSubscriptions();
       stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname, direction: "init", roomId, x: 800 / 40, y: 650 / 40 }) });
@@ -217,11 +239,9 @@ class BridgeScene extends Phaser.Scene {
 
   setupSubscriptions() {
     const bodytypeToCharacter = { 1: 'boy1', 2: 'boy2', 3: 'boy3', 4: 'girl1', 5: 'girl2', 6: 'girl3' };
-
     if (this.chatSub) this.chatSub.unsubscribe();
     if (this.positionsSub) this.positionsSub.unsubscribe();
     if (this.customizationSub) this.customizationSub.unsubscribe();
-
     this.customizationSub = stompClient.subscribe('/topic/customization', (message) => {
       const data = JSON.parse(message.body);
       const bodytype = data.bodytype || data.bodyType;
@@ -232,7 +252,6 @@ class BridgeScene extends Phaser.Scene {
         player.sprite.setTexture(charKey);
       }
     });
-
     this.positionsSub = stompClient.subscribe('/topic/positions', (message) => {
       const positions = JSON.parse(message.body);
       const usersInSameRoom = positions.filter(pos => pos.roomName === this.currentRoomName);
@@ -262,7 +281,6 @@ class BridgeScene extends Phaser.Scene {
           if (playerObj.chatBubble) playerObj.chatBubble.setPosition(targetX - 110, targetY - 150);
         }
       });
-
       this.otherPlayers.forEach((playerData, nick) => {
         if (!receivedNicknames.has(nick)) {
           playerData.sprite.destroy();
@@ -273,7 +291,6 @@ class BridgeScene extends Phaser.Scene {
         }
       });
     });
-
     this.chatSub = stompClient.subscribe(`/topic/room/${this.roomId}`, (msg) => {
       let chat;
       try {
@@ -284,12 +301,9 @@ class BridgeScene extends Phaser.Scene {
       const sender = chat.nickname;
       const content = chat.content;
       this.addChatLog(`[${sender}] ${content}`);
-      // 자신의 말풍선 표시
       if (sender === this.nickname) {
         this.showChatBubble(this.player, content, true);
-      }
-      // 타 플레이어의 말풍선 표시
-      else if (this.otherPlayers.has(sender)) {
+      } else if (this.otherPlayers.has(sender)) {
         this.showChatBubble(this.otherPlayers.get(sender).sprite, content, false, sender);
       }
     });
@@ -304,15 +318,12 @@ class BridgeScene extends Phaser.Scene {
       this.otherPlayers.get(nickname).chatBubble.destroy();
       this.otherPlayers.get(nickname).chatBubble = null;
     }
-
     const bubbleWidth = 220;
     const bubbleHeight = 90;
     const tailSize = 12;
-
     const bubbleRect = this.add.graphics();
     bubbleRect.fillStyle(0xffffff, 1);
     bubbleRect.fillRoundedRect(0, 0, bubbleWidth, bubbleHeight, 10);
-
     const tail = this.add.graphics();
     tail.fillStyle(0xffffff, 1);
     tail.beginPath();
@@ -321,20 +332,17 @@ class BridgeScene extends Phaser.Scene {
     tail.lineTo(bubbleWidth / 2 + tailSize, bubbleHeight);
     tail.closePath();
     tail.fillPath();
-
     const msgText = this.add.text(bubbleWidth / 2, bubbleHeight / 2, message, {
       font: '14px Pretendard',
       color: '#000000',
       align: 'center',
       wordWrap: { width: bubbleWidth - 20 }
     }).setOrigin(0.5);
-
     const bubble = this.add.container(
       targetSprite.x - bubbleWidth / 2,
       targetSprite.y - 150,
       [bubbleRect, tail, msgText]
     ).setDepth(6);
-
     this.time.delayedCall(3000, () => {
       bubble.destroy();
       if (isMe) this.activeBubble = null;
@@ -342,7 +350,6 @@ class BridgeScene extends Phaser.Scene {
         this.otherPlayers.get(nickname).chatBubble = null;
       }
     });
-
     if (isMe) this.activeBubble = bubble;
     else if (nickname && this.otherPlayers.get(nickname)) {
       this.otherPlayers.get(nickname).chatBubble = bubble;
@@ -356,7 +363,6 @@ class BridgeScene extends Phaser.Scene {
       6: [{ x: 100, y: 640, target: { scene: 'MainScene', roomId: 3 } }, { x: 1500, y: 640, target: { scene: 'MainScene', roomId: 2 } }]
     };
     if (!portalConfig[roomId]) return;
-
     this.portals = this.physics.add.staticGroup();
     portalConfig[roomId].forEach(portalInfo => {
       const p = this.add.circle(portalInfo.x, portalInfo.y, 30, 0xFF00FF, 0.3).setDepth(4);
@@ -367,26 +373,21 @@ class BridgeScene extends Phaser.Scene {
 
   update() {
     if (!this.player) return;
-
     this.activePortal = null;
     this.physics.world.overlap(this.player, this.portals, (player, portal) => {
       this.activePortal = portal.getData('target');
     }, null, this);
-
     if (this.activeBubble) this.activeBubble.setPosition(this.player.x - 110, this.player.y - 150);
-
     if (this.nicknameText && this.nicknameBg) {
       this.nicknameText.setPosition(this.player.x, this.player.y + 78);
       this.nicknameBg.setPosition(this.player.x, this.player.y + 78);
     }
-
     this.otherPlayers.forEach(playerObj => {
       const { sprite, nicknameBg, nicknameText, chatBubble } = playerObj;
       nicknameBg.setPosition(sprite.x, sprite.y + 78);
       nicknameText.setPosition(sprite.x, sprite.y + 78);
       if (chatBubble) chatBubble.setPosition(sprite.x - 110, sprite.y - 150);
     });
-
     if (this.activePortal && Phaser.Input.Keyboard.JustDown(this.eKey)) {
       this.input.keyboard.enabled = false;
       if (this.bgm) {
@@ -406,25 +407,47 @@ class BridgeScene extends Phaser.Scene {
     if (!this.input.keyboard.enabled) return;
     const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
     const dir = keyMap[event.key] || (['w', 'a', 's', 'd'].includes(event.key.toLowerCase()) ? event.key.toLowerCase() : null);
-    if (dir && dir !== this.currentDirection) {
-      this.currentDirection = dir;
-      if (this.moveInterval) clearInterval(this.moveInterval);
-      const payload = { nickname: this.nickname, direction: dir, roomId: this.roomId };
-      stompClient.publish({ destination: "/app/move", body: JSON.stringify(payload) });
-      this.moveInterval = setInterval(() => {
-        stompClient.publish({ destination: "/app/move", body: JSON.stringify(payload) });
-      }, 100);
+    if (dir) {
+      this.pressedKeys.add(dir);
+      if (!this.moveInterval) {
+        this.moveInterval = setInterval(() => this.moveByPressedKeys(), 80);
+      }
     }
   }
 
   handleKeyUp(event) {
     if (!this.input.keyboard.enabled) return;
-    const validKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-    if (validKeys.includes(event.key)) {
-      if (this.moveInterval) clearInterval(this.moveInterval);
-      this.moveInterval = null;
-      this.currentDirection = null;
-      stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname: this.nickname, direction: "stop", roomId: this.roomId }) });
+    const keyMap = { ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd' };
+    const dir = keyMap[event.key] || (['w', 'a', 's', 'd'].includes(event.key.toLowerCase()) ? event.key.toLowerCase() : null);
+    if (dir) {
+      this.pressedKeys.delete(dir);
+      if (this.pressedKeys.size === 0 && this.moveInterval) {
+        clearInterval(this.moveInterval);
+        this.moveInterval = null;
+        stompClient.publish({ destination: "/app/move", body: JSON.stringify({ nickname: this.nickname, direction: "stop", roomId: this.roomId }) });
+      }
+    }
+  }
+
+  moveByPressedKeys() {
+    const speed = 4;
+    let dx = 0, dy = 0;
+    if (this.pressedKeys.has('w')) dy -= speed;
+    if (this.pressedKeys.has('s')) dy += speed;
+    if (this.pressedKeys.has('a')) dx -= speed;
+    if (this.pressedKeys.has('d')) dx += speed;
+    if (this.player && (dx !== 0 || dy !== 0)) {
+      this.player.x += dx;
+      this.player.y += dy;
+      let dirStr = '';
+      if (dy < 0) dirStr += 'w';
+      else if (dy > 0) dirStr += 's';
+      if (dx < 0) dirStr += 'a';
+      else if (dx > 0) dirStr += 'd';
+      stompClient.publish({
+        destination: "/app/move",
+        body: JSON.stringify({ nickname: this.nickname, direction: dirStr || 'w', roomId: this.roomId })
+      });
     }
   }
 
