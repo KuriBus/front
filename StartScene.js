@@ -56,7 +56,7 @@ class StartScene extends Phaser.Scene {
 
     startBtn.setInteractive();
     startBtn.on('pointerdown', () => {
-      this.scene.start('NicknameScene'); 
+      this.scene.start('LoginScene'); 
     });
   }
 }

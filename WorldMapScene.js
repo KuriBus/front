@@ -1,4 +1,4 @@
-import { socket } from './game.js'; 
+// import { socket } from './game.js'; 
 import { stompClient } from './game.js';
 
 class WorldMapScene extends Phaser.Scene {
